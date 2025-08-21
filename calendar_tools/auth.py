@@ -74,16 +74,28 @@ async def create_service(email=None):
 
 async def _oauth_flow(email):
     """Perform OAuth 2.0 authorization flow with local server."""
-    # Load client secrets
-    client_secrets_file = "client_secret.json"
-    if not Path(client_secrets_file).exists():
-        raise FileNotFoundError(f"Client secrets file not found: {client_secrets_file}")
+    # Load client secrets from environment variables or file
+    client_id = os.getenv('GOOGLE_CLIENT_ID')
+    client_secret = os.getenv('GOOGLE_CLIENT_SECRET')
     
-    with open(client_secrets_file, 'r') as f:
-        client_data = json.load(f)
-        client_config = client_data.get('installed') or client_data.get('web')
-        if not client_config:
-            raise ValueError("Invalid client secrets file format. Expected 'installed' or 'web' key.")
+    if client_id and client_secret:
+        # Use environment variables
+        client_config = {
+            'client_id': client_id,
+            'client_secret': client_secret
+        }
+        print("Using Google credentials from environment variables")
+    else:
+        # Fallback to client_secret.json file
+        client_secrets_file = "client_secret.json"
+        if not Path(client_secrets_file).exists():
+            raise FileNotFoundError(f"Client secrets file not found: {client_secrets_file} and GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET not set")
+        
+        with open(client_secrets_file, 'r') as f:
+            client_data = json.load(f)
+            client_config = client_data.get('installed') or client_data.get('web')
+            if not client_config:
+                raise ValueError("Invalid client secrets file format. Expected 'installed' or 'web' key.")
     
     # Build authorization URL
     auth_params = {
