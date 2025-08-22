@@ -20,7 +20,15 @@ async def list_calendars(
                                If False, exclude calendars matching patterns (default: True)
         
     Returns:
-        List of calendar dictionaries with id, summary, accessRole, etc.
+        List of calendar dictionaries with simplified format:
+        [
+            {
+                'calendarId': 'primary',
+                'calendarName': 'John Doe',
+                'description': 'Main calendar'
+            },
+            ...
+        ]
         
     Raises:
         Exception: If the API call fails
@@ -62,9 +70,24 @@ async def list_calendars(
                     if not pattern_matches:
                         filtered_calendars.append(calendar)
             
-            return filtered_calendars
+            return _format_calendars(filtered_calendars)
         
-        return calendars
+        return _format_calendars(calendars)
         
     except Exception as e:
         raise Exception(f"Failed to list calendars: {str(e)}")
+
+
+def _format_calendars(calendars):
+    """Format raw calendar data into clean, simplified structure."""
+    formatted_calendars = []
+    
+    for calendar in calendars:
+        formatted_calendar = {
+            'calendarId': calendar.get('id', ''),
+            'calendarName': calendar.get('summary', ''),
+            'description': calendar.get('description', ''),
+        }
+        formatted_calendars.append(formatted_calendar)
+    
+    return formatted_calendars

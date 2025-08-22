@@ -52,16 +52,21 @@ async def test_list_calendars_success(mock_service):
     
     # Verify first calendar (primary)
     primary_cal = calendars[0]
-    assert primary_cal["id"] == "primary"
-    assert primary_cal["summary"] == "Primary Calendar"
-    assert primary_cal["accessRole"] == "owner"
-    assert primary_cal["primary"] is True
+    assert primary_cal["calendarId"] == "primary"
+    assert primary_cal["calendarName"] == "Primary Calendar"
+    assert primary_cal["description"] == "Main personal calendar"
     
     # Verify second calendar (team)
     team_cal = calendars[1]
-    assert team_cal["id"] == "team@example.com"
-    assert team_cal["summary"] == "Team Calendar"
-    assert team_cal["accessRole"] == "reader"
+    assert team_cal["calendarId"] == "team@example.com"
+    assert team_cal["calendarName"] == "Team Calendar"
+    assert team_cal["description"] == "Shared team events"
+    
+    # Verify third calendar (work)
+    work_cal = calendars[2]
+    assert work_cal["calendarId"] == "work@company.com"
+    assert work_cal["calendarName"] == "Work Calendar"
+    assert work_cal["description"] == ""
     
     # Verify service was called correctly
     mock_service.calendarList.assert_called_once()
