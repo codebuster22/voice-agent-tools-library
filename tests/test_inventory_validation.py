@@ -1,0 +1,75 @@
+"""
+Test validation logic for inventory tools (no database required).
+
+Tests parameter validation and error handling without database dependency.
+"""
+
+import pytest
+from inventory.check_inventory import check_inventory
+
+
+class TestCheckInventoryValidation:
+    """Test validation logic without database dependency."""
+    
+    @pytest.mark.asyncio
+    async def test_invalid_category_validation(self):
+        """Test validation error for invalid category."""
+        with pytest.raises(ValueError) as exc_info:
+            await check_inventory(category='invalid_category')
+        
+        assert 'invalid category' in str(exc_info.value).lower()
+        assert 'sedan' in str(exc_info.value)
+        assert 'suv' in str(exc_info.value)
+        assert 'truck' in str(exc_info.value)
+        assert 'coupe' in str(exc_info.value)
+    
+    @pytest.mark.asyncio
+    async def test_invalid_status_validation(self):
+        """Test validation error for invalid status."""
+        with pytest.raises(ValueError) as exc_info:
+            await check_inventory(status='invalid_status')
+        
+        assert 'invalid status' in str(exc_info.value).lower()
+        assert 'available' in str(exc_info.value)
+        assert 'sold' in str(exc_info.value)
+        assert 'reserved' in str(exc_info.value)
+    
+    @pytest.mark.asyncio
+    async def test_negative_price_validation(self):
+        """Test validation error for negative prices."""
+        with pytest.raises(ValueError) as exc_info:
+            await check_inventory(min_price=-1000)
+        
+        assert 'price cannot be negative' in str(exc_info.value).lower()
+        
+        with pytest.raises(ValueError) as exc_info:
+            await check_inventory(max_price=-500)
+        
+        assert 'price cannot be negative' in str(exc_info.value).lower()
+    
+    @pytest.mark.asyncio
+    async def test_invalid_price_range_validation(self):
+        """Test validation error for invalid price range."""
+        with pytest.raises(ValueError) as exc_info:
+            await check_inventory(min_price=50000, max_price=30000)
+        
+        assert 'min_price cannot be greater than max_price' in str(exc_info.value).lower()
+    
+    @pytest.mark.asyncio 
+    async def test_valid_parameters_pass_validation(self):
+        """Test that valid parameters pass validation but fail at database level."""
+        # This should pass validation but fail at database query level
+        with pytest.raises(Exception) as exc_info:
+            await check_inventory(
+                category='sedan',
+                model_name='Tesla',
+                min_price=30000,
+                max_price=60000,
+                features=['autopilot'],
+                status='available'
+            )
+        
+        # Should fail at database level, not validation level
+        assert 'inventory search failed' in str(exc_info.value).lower()
+        # Should NOT be a ValueError (which would indicate validation failure)
+        assert not isinstance(exc_info.value, ValueError)

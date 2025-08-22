@@ -8,6 +8,10 @@ dependencies = [
     "google-api-python-client==2.179.0",
     "python-dotenv>=1.0.0",
     "pytz>=2023.3",
+    "supabase==2.18.1",
+    "postgrest>=0.19.0",
+    "httpx>=0.28.0",
+    "aiofiles>=24.1.0",
 ]
 
 [dependency-groups]
