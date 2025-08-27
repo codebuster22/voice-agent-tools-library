@@ -33,13 +33,13 @@ def get_supabase_client() -> Client:
     if _supabase_client is not None:
         return _supabase_client
     
-    # Get environment variables
+    # Get environment variables - prefer service key for backend operations
     supabase_url = os.getenv('SUPABASE_URL')
-    supabase_key = os.getenv('SUPABASE_KEY')
+    supabase_key = os.getenv('SUPABASE_SERVICE_KEY') or os.getenv('SUPABASE_KEY')
     
     if not supabase_url or not supabase_key:
         raise ValueError(
-            "Missing required environment variables: SUPABASE_URL and SUPABASE_KEY must be set"
+            "Missing required environment variables: SUPABASE_URL and (SUPABASE_SERVICE_KEY or SUPABASE_KEY) must be set"
         )
     
     try:
@@ -50,37 +50,6 @@ def get_supabase_client() -> Client:
     except Exception as e:
         logger.error(f"Failed to create Supabase client: {str(e)}")
         raise Exception(f"Database connection failed: {str(e)}")
-
-
-async def test_connection() -> dict:
-    """
-    Test the Supabase database connection.
-    
-    Returns:
-        dict: Connection status and basic info
-        
-    Raises:
-        Exception: If connection test fails
-    """
-    try:
-        client = get_supabase_client()
-        
-        # Simple query to test connection
-        response = client.table('vehicles').select('count', count='exact').limit(0).execute()
-        
-        return {
-            'status': 'connected',
-            'url': os.getenv('SUPABASE_URL', '').split('@')[1] if '@' in os.getenv('SUPABASE_URL', '') else 'unknown',
-            'message': 'Database connection successful'
-        }
-        
-    except Exception as e:
-        logger.error(f"Database connection test failed: {str(e)}")
-        return {
-            'status': 'failed',
-            'error': str(e),
-            'message': 'Database connection failed'
-        }
 
 
 def close_connection():

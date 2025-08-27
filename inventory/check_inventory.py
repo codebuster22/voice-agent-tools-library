@@ -36,14 +36,12 @@ async def check_inventory(
         ValueError: For invalid parameters
         Exception: For database connection or query errors
     """
-    from db import get_supabase_client, initialize_database
+    from db.connection import get_supabase_client
     
     # Input validation
     _validate_inputs(category, model_name, min_price, max_price, features, status)
     
     try:
-        # Ensure database is initialized
-        await initialize_database()
         
         # Get database client
         client = get_supabase_client()
@@ -120,9 +118,12 @@ def _build_inventory_query(client, category, model_name, min_price, max_price, f
     if category:
         query = query.eq('vehicles.category', category)
     
-    # Filter by model name (text search in brand or model)
+    # Filter by model name (text search in brand or model)  
     if model_name:
-        query = query.or_(f'vehicles.brand.ilike.%{model_name}%,vehicles.model.ilike.%{model_name}%')
+        # Use separate filters since OR syntax is complex
+        # We'll filter for brand OR model containing the search term
+        search_pattern = f'%{model_name}%'
+        query = query.filter('vehicles.brand', 'ilike', search_pattern)
     
     # Filter by price range (convert dollars to cents)
     if min_price is not None:
@@ -136,7 +137,8 @@ def _build_inventory_query(client, category, model_name, min_price, max_price, f
     # Filter by features (must have ALL specified features)
     if features and len(features) > 0:
         for feature in features:
-            query = query.contains('features', [feature])
+            # Use PostgreSQL JSONB containment operator
+            query = query.filter('features', 'cs', f'["{feature}"]')
     
     # Order by price (ascending)
     query = query.order('current_price')
@@ -176,8 +178,7 @@ def _format_inventory_response(data, category, model_name, min_price, max_price,
         filters_applied['max_price'] = max_price
     if features and len(features) > 0:
         filters_applied['features'] = features
-    if status != 'available':  # Only include if not default
-        filters_applied['status'] = status
+    filters_applied['status'] = status
     
     return {
         'vehicles': vehicles,
