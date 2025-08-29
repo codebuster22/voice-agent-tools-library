@@ -12,6 +12,10 @@ dependencies = [
     "postgrest>=0.19.0",
     "httpx>=0.28.0",
     "aiofiles>=24.1.0",
+    "fastapi>=0.104.0",
+    "uvicorn[standard]>=0.24.0",
+    "pydantic>=2.5.0",
+    "vapi-server-sdk>=1.7.0",
 ]
 
 [dependency-groups]
