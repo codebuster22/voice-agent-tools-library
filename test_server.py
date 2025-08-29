@@ -12,7 +12,7 @@ from datetime import datetime
 
 async def test_server():
     """Test the server endpoints."""
-    base_url = "http://localhost:8000/api/v1"
+    base_url = "https://voice-agent-tools-library-production.up.railway.app/api/v1"
     
     async with httpx.AsyncClient() as client:
         print("🚗 Testing Automotive Voice Agent API Server")

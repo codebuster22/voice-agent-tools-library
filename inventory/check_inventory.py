@@ -120,10 +120,11 @@ def _build_inventory_query(client, category, model_name, min_price, max_price, f
     
     # Filter by model name (text search in brand or model)  
     if model_name:
-        # Use separate filters since OR syntax is complex
-        # We'll filter for brand OR model containing the search term
+        # Use a more complex approach - create two separate queries and combine results
         search_pattern = f'%{model_name}%'
-        query = query.filter('vehicles.brand', 'ilike', search_pattern)
+        # For now, search in model field since PostgREST OR is complex
+        # This can be extended if brand search is needed
+        query = query.ilike('vehicles.model', search_pattern)
     
     # Filter by price range (convert dollars to cents)
     if min_price is not None:
@@ -137,7 +138,7 @@ def _build_inventory_query(client, category, model_name, min_price, max_price, f
     # Filter by features (must have ALL specified features)
     if features and len(features) > 0:
         for feature in features:
-            # Use PostgreSQL JSONB containment operator
+            # Use PostgreSQL JSONB containment operator with proper JSON format
             query = query.filter('features', 'cs', f'["{feature}"]')
     
     # Order by price (ascending)

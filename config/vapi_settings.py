@@ -11,12 +11,13 @@ class VapiSettings:
     """VAPI configuration settings loaded from environment variables."""
     
     def __init__(self):
-        self.vapi_api_token: str = os.getenv("VAPI_API_TOKEN", "")
+        self.vapi_api_token: str = os.getenv("VAPI_API_KEY", "")
         self.server_base_url: str = os.getenv("SERVER_BASE_URL", "http://localhost:8000")
+        self.vapi_base_url: str = os.getenv("VAPI_BASE_URL", "https://api.vapi.ai")
         self.vapi_webhook_secret: Optional[str] = os.getenv("VAPI_WEBHOOK_SECRET")
         
         if not self.vapi_api_token:
-            raise ValueError("VAPI_API_TOKEN environment variable is required")
+            raise ValueError("VAPI_API_KEY environment variable is required")
     
     @property
     def webhook_url(self) -> str:

@@ -7,6 +7,10 @@ One-time setup script for VAPI integration.
 import asyncio
 import sys
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
@@ -36,10 +40,10 @@ async def main():
         print(f"\n✅ Successfully registered {len(tool_ids)} tools with direct endpoint mapping:")
         
         # Show tool mapping summary
-        tool_definitions = manager.get_all_tool_definitions()
-        for i, (tool_id, tool_def) in enumerate(zip(tool_ids, tool_definitions), 1):
-            endpoint = tool_def["server"]["url"].split("/api/v1/")[-1]
-            print(f"   {i:2d}. {tool_def['name']} → /api/v1/{endpoint}")
+        tools = manager.get_all_tools()
+        for i, (tool_id, tool) in enumerate(zip(tool_ids, tools), 1):
+            endpoint = tool.server.url.split("/api/v1/")[-1]
+            print(f"   {i:2d}. {tool.function.name} → /api/v1/{endpoint}")
         
         # Create voice assistant
         print("\n🎙️  Creating automotive voice assistant with direct tool access...")
@@ -71,7 +75,7 @@ async def main():
         
     except ValueError as e:
         print(f"❌ Configuration error: {e}")
-        print("💡 Make sure VAPI_API_TOKEN is set in your environment")
+        print("💡 Make sure VAPI_API_KEY is set in your environment")
     except Exception as e:
         print(f"❌ Setup failed: {e}")
         import traceback

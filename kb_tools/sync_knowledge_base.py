@@ -10,13 +10,17 @@ Complete workflow for synchronizing knowledge base files with Vapi:
 
 import asyncio
 import httpx
+import os
 from datetime import datetime
 from typing import List, Dict, Any, Optional
+from dotenv import load_dotenv
 import io
+
+# Load environment variables
+load_dotenv()
 
 
 async def sync_knowledge_base(
-    vapi_api_key: str,
     knowledge_base_tool_id: str,
     markdown_files: List[Dict[str, str]],
     file_name_prefix: str = "kb_",
@@ -27,7 +31,6 @@ async def sync_knowledge_base(
     Complete Vapi knowledge base synchronization workflow
     
     Args:
-        vapi_api_key: Vapi API authentication key
         knowledge_base_tool_id: Existing knowledge base tool ID to update
         markdown_files: List of markdown files from fetch_latest_kb
         file_name_prefix: Prefix for knowledge base file identification  
@@ -41,9 +44,10 @@ async def sync_knowledge_base(
         ValueError: Invalid input parameters
         Exception: API, network, or processing errors
     """
-    # Input validation
-    if not vapi_api_key or not vapi_api_key.strip():
-        raise ValueError("Vapi API key is required")
+    # Get API key from environment
+    vapi_api_key = os.getenv("VAPI_API_KEY")
+    if not vapi_api_key:
+        raise ValueError("VAPI_API_KEY environment variable is required")
     
     if not knowledge_base_tool_id or not knowledge_base_tool_id.strip():
         raise ValueError("Knowledge base tool ID is required")

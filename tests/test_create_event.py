@@ -135,7 +135,7 @@ class TestCreateEventAttendees:
         
         result, cleanup = await create_and_cleanup_event(
             service,
-            attendees=["test1@example.com", "test2@example.com"],
+            attendees=["mihirsinh.parmar.social@gmail.com", "mihirsinh.parmar.it@gmail.com"],
             send_notifications="none",  # Don't spam test emails
             **base_event_data
         )
@@ -154,8 +154,8 @@ class TestCreateEventAttendees:
         
         result, cleanup = await create_and_cleanup_event(
             service,
-            attendees=["required@example.com"],
-            optional_attendees=["optional@example.com"],
+            attendees=["mihirsinh.parmar.it@gmail.com"],
+            optional_attendees=["mihirsinh.parmar.social@gmail.com"],
             send_notifications="none",
             **base_event_data
         )
@@ -173,7 +173,7 @@ class TestCreateEventAttendees:
         
         result, cleanup = await create_and_cleanup_event(
             service,
-            attendees=["guest@example.com"],
+            attendees=["mihirsinh.parmar.social@gmail.com"],
             guests_can_invite_others=False,
             guests_can_modify=True,
             guests_can_see_others=False,

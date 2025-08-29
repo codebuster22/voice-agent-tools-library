@@ -162,14 +162,15 @@ async def test_list_calendars_filters_required_fields():
     calendars = await list_calendars(service)
     calendar = calendars[0]
     
-    # Should contain core fields
-    assert "id" in calendar
-    assert "summary" in calendar  
-    assert "accessRole" in calendar
-    
-    # Should contain optional fields if present
-    assert "timeZone" in calendar
+    # Should contain core fields with simplified names
+    assert "calendarId" in calendar
+    assert "calendarName" in calendar  
     assert "description" in calendar
+    
+    # Should NOT contain raw API fields (they're filtered out)
+    assert "timeZone" not in calendar
+    assert "accessRole" not in calendar
+    assert "etag" not in calendar
 
 
 @pytest.mark.asyncio
@@ -207,7 +208,7 @@ async def test_list_calendars_regex_filter_include():
     )
     
     assert len(calendars) == 1
-    assert calendars[0]["summary"] == "Team Calendar"
+    assert calendars[0]["calendarName"] == "Team Calendar"
 
 
 @pytest.mark.asyncio
@@ -245,9 +246,9 @@ async def test_list_calendars_regex_filter_exclude():
     )
     
     assert len(calendars) == 2
-    assert all("Transferred from" not in cal["summary"] for cal in calendars)
-    assert any(cal["summary"] == "Primary Calendar" for cal in calendars)
-    assert any(cal["summary"] == "Team Calendar" for cal in calendars)
+    assert all("Transferred from" not in cal["calendarName"] for cal in calendars)
+    assert any(cal["calendarName"] == "Primary Calendar" for cal in calendars)
+    assert any(cal["calendarName"] == "Team Calendar" for cal in calendars)
 
 
 @pytest.mark.asyncio
@@ -291,7 +292,7 @@ async def test_list_calendars_multiple_regex_patterns():
     )
     
     assert len(calendars) == 2
-    summaries = [cal["summary"] for cal in calendars]
+    summaries = [cal["calendarName"] for cal in calendars]
     assert "Work Calendar" in summaries
     assert "Personal Events" in summaries
 
@@ -325,7 +326,7 @@ async def test_list_calendars_regex_case_insensitive():
     )
     
     assert len(calendars) == 1
-    assert calendars[0]["summary"] == "TEAM CALENDAR"
+    assert calendars[0]["calendarName"] == "TEAM CALENDAR"
 
 
 @pytest.mark.asyncio
@@ -363,7 +364,7 @@ async def test_list_calendars_regex_searches_all_fields():
     )
     
     assert len(calendars) == 2
-    ids = [cal["id"] for cal in calendars]
+    ids = [cal["calendarId"] for cal in calendars]
     assert "special@example.com" in ids
     assert "regular@example.com" in ids
 

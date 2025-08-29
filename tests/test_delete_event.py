@@ -224,7 +224,7 @@ class TestDeleteEventWithAttendees:
             summary='Test Event with Attendees',
             start_time=start_time.isoformat(),
             end_time=(start_time + timedelta(hours=1)).isoformat(),
-            attendees=['test1@example.com', 'test2@example.com'],
+            attendees=['mihirsinh.parmar.social@gmail.com', 'mihirsinh.parmar.it@gmail.com'],
             send_notifications='none'  # Don't spam during creation
         )
         
@@ -253,7 +253,7 @@ class TestDeleteEventWithAttendees:
             summary='Test Event with Attendees No Notify',
             start_time=start_time.isoformat(),
             end_time=(start_time + timedelta(hours=1)).isoformat(),
-            attendees=['test3@example.com'],
+            attendees=['parmar.mihir.parmar@gmail.com'],
             send_notifications='none'
         )
         

@@ -126,14 +126,14 @@ class TestUpdateEvent:
         """Test replacing attendees list."""
         async for event_id, original_event in self.create_and_cleanup_event(
             service, calendar_id,
-            attendees=['test1@example.com'],
+            attendees=['mihirsinh.parmar.social@gmail.com'],
             send_notifications='none'
         ):
             result = await update_event(
                 service,
                 event_id=event_id,
                 calendar_id=calendar_id,
-                attendees=['test2@example.com', 'test3@example.com'],
+                attendees=['mihirsinh.parmar.it@gmail.com', 'parmar.mihir.parmar@gmail.com'],
                 attendee_action='replace',
                 send_notifications='none'
             )
@@ -141,22 +141,22 @@ class TestUpdateEvent:
             assert 'attendees' in result['updated_fields']
             # Verify attendees were updated (not necessarily that notifications were sent)
             assert 'attendees_notified' in result
-            assert 'test2@example.com' in result['attendees_notified']
-            assert 'test3@example.com' in result['attendees_notified']
+            assert 'mihirsinh.parmar.it@gmail.com' in result['attendees_notified']
+            assert 'parmar.mihir.parmar@gmail.com' in result['attendees_notified']
     
     @pytest.mark.asyncio
     async def test_update_attendees_add(self, service, calendar_id):
         """Test adding attendees to existing list."""
         async for event_id, original_event in self.create_and_cleanup_event(
             service, calendar_id,
-            attendees=['existing@example.com'],
+            attendees=['parmar.mihir.parmar@gmail.com'],
             send_notifications='none'
         ):
             result = await update_event(
                 service,
                 event_id=event_id,
                 calendar_id=calendar_id,
-                attendees=['new@example.com'],
+                attendees=['mihirsinh.parmar.it@gmail.com'],
                 attendee_action='add',
                 send_notifications='none'
             )
@@ -169,14 +169,14 @@ class TestUpdateEvent:
         """Test removing specific attendees."""
         async for event_id, original_event in self.create_and_cleanup_event(
             service, calendar_id,
-            attendees=['keep@example.com', 'remove@example.com'],
+            attendees=['mihirsinh.parmar.it@gmail.com', 'mihirsinh.parmar.social@gmail.com'],
             send_notifications='none'
         ):
             result = await update_event(
                 service,
                 event_id=event_id,
                 calendar_id=calendar_id,
-                attendees=['remove@example.com'],
+                attendees=['mihirsinh.parmar.social@gmail.com'],
                 attendee_action='remove',
                 send_notifications='none'
             )
@@ -334,7 +334,7 @@ class TestUpdateEvent:
                 service,
                 event_id='any_id',
                 calendar_id=calendar_id,
-                attendees=['test@example.com'],
+                attendees=['mihirsinh.parmar.social@gmail.com'],
                 attendee_action='invalid_action'
             )
         

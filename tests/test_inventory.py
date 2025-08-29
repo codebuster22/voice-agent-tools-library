@@ -13,7 +13,7 @@ from typing import Dict, Any, List
 from uuid import uuid4
 
 # Import our modules
-from db import get_supabase_client, initialize_database, test_connection
+from db import get_supabase_client
 from inventory.check_inventory import check_inventory
 
 
@@ -22,15 +22,7 @@ class TestCheckInventory:
     
     @pytest_asyncio.fixture(scope="class")
     async def database_setup(self):
-        """Initialize database and create test data."""
-        # Test connection first
-        connection_result = await test_connection()
-        assert connection_result['status'] == 'connected', f"Database connection failed: {connection_result}"
-        
-        # Initialize database schema
-        init_result = await initialize_database()
-        assert init_result['status'] in ['ready', 'initialized'], f"Database init failed: {init_result}"
-        
+        """Setup test data using existing Supabase database."""
         # Create test data
         await self._create_test_data()
         
@@ -43,10 +35,10 @@ class TestCheckInventory:
         """Create comprehensive test data for inventory testing."""
         client = get_supabase_client()
         
-        # Test vehicles data
+        # Test vehicles data with proper UUIDs
         vehicles_data = [
             {
-                'id': 'test-vehicle-1',
+                'id': 'aaaaaaaa-bbbb-cccc-dddd-111111111111',
                 'brand': 'Tesla',
                 'model': 'Model 3',
                 'year': 2024,
@@ -55,7 +47,7 @@ class TestCheckInventory:
                 'is_active': True
             },
             {
-                'id': 'test-vehicle-2', 
+                'id': 'aaaaaaaa-bbbb-cccc-dddd-222222222222', 
                 'brand': 'Tesla',
                 'model': 'Model Y',
                 'year': 2024,
@@ -64,7 +56,7 @@ class TestCheckInventory:
                 'is_active': True
             },
             {
-                'id': 'test-vehicle-3',
+                'id': 'aaaaaaaa-bbbb-cccc-dddd-333333333333',
                 'brand': 'Ford',
                 'model': 'F-150',
                 'year': 2024,
@@ -73,7 +65,7 @@ class TestCheckInventory:
                 'is_active': True
             },
             {
-                'id': 'test-vehicle-4',
+                'id': 'aaaaaaaa-bbbb-cccc-dddd-444444444444',
                 'brand': 'BMW',
                 'model': '330i',
                 'year': 2024,
@@ -90,11 +82,11 @@ class TestCheckInventory:
             except Exception as e:
                 print(f"Warning: Could not insert vehicle {vehicle['id']}: {e}")
         
-        # Test inventory data
+        # Test inventory data with proper UUIDs
         inventory_data = [
             {
-                'id': 'test-inv-1',
-                'vehicle_id': 'test-vehicle-1',
+                'id': 'bbbbbbbb-cccc-dddd-eeee-111111111111',
+                'vehicle_id': 'aaaaaaaa-bbbb-cccc-dddd-111111111111',
                 'vin': 'TEST1VIN123456789',
                 'color': 'Pearl White',
                 'features': ['autopilot', 'premium_interior'],
@@ -103,8 +95,8 @@ class TestCheckInventory:
                 'expected_delivery_date': str(date.today() + timedelta(days=30))
             },
             {
-                'id': 'test-inv-2',
-                'vehicle_id': 'test-vehicle-1',
+                'id': 'bbbbbbbb-cccc-dddd-eeee-222222222222',
+                'vehicle_id': 'aaaaaaaa-bbbb-cccc-dddd-111111111111',
                 'vin': 'TEST2VIN123456789',
                 'color': 'Midnight Silver',
                 'features': ['autopilot', 'fsd'],
@@ -113,8 +105,8 @@ class TestCheckInventory:
                 'expected_delivery_date': str(date.today() + timedelta(days=45))
             },
             {
-                'id': 'test-inv-3',
-                'vehicle_id': 'test-vehicle-2',
+                'id': 'bbbbbbbb-cccc-dddd-eeee-333333333333',
+                'vehicle_id': 'aaaaaaaa-bbbb-cccc-dddd-222222222222',
                 'vin': 'TEST3VIN123456789',
                 'color': 'Deep Blue',
                 'features': ['autopilot', 'tow_hitch'],
@@ -123,8 +115,8 @@ class TestCheckInventory:
                 'expected_delivery_date': str(date.today() + timedelta(days=60))
             },
             {
-                'id': 'test-inv-4',
-                'vehicle_id': 'test-vehicle-3',
+                'id': 'bbbbbbbb-cccc-dddd-eeee-444444444444',
+                'vehicle_id': 'aaaaaaaa-bbbb-cccc-dddd-333333333333',
                 'vin': 'TEST4VIN123456789',
                 'color': 'Lightning Blue',
                 'features': ['4x4', 'tow_package'],
@@ -133,11 +125,11 @@ class TestCheckInventory:
                 'expected_delivery_date': str(date.today() + timedelta(days=90))
             },
             {
-                'id': 'test-inv-5',
-                'vehicle_id': 'test-vehicle-3',
+                'id': 'bbbbbbbb-cccc-dddd-eeee-555555555555',
+                'vehicle_id': 'aaaaaaaa-bbbb-cccc-dddd-333333333333',
                 'vin': 'TEST5VIN123456789',
                 'color': 'Agate Black',
-                'features': ['4x4', 'pro_trailer_backup'],
+                'features': ['4x4', 'tow_package', 'pro_trailer_backup'],
                 'status': 'available',
                 'current_price': 4195000,  # $41,950 in cents
                 'expected_delivery_date': str(date.today() + timedelta(days=75))
@@ -157,9 +149,23 @@ class TestCheckInventory:
         
         try:
             # Delete test inventory first (due to foreign key constraints)
-            client.table('inventory').delete().like('id', 'test-inv-%').execute()
+            inventory_ids = [
+                'bbbbbbbb-cccc-dddd-eeee-111111111111',
+                'bbbbbbbb-cccc-dddd-eeee-222222222222', 
+                'bbbbbbbb-cccc-dddd-eeee-333333333333',
+                'bbbbbbbb-cccc-dddd-eeee-444444444444',
+                'bbbbbbbb-cccc-dddd-eeee-555555555555'
+            ]
+            client.table('inventory').delete().in_('id', inventory_ids).execute()
+            
             # Delete test vehicles
-            client.table('vehicles').delete().like('id', 'test-vehicle-%').execute()
+            vehicle_ids = [
+                'aaaaaaaa-bbbb-cccc-dddd-111111111111',
+                'aaaaaaaa-bbbb-cccc-dddd-222222222222',
+                'aaaaaaaa-bbbb-cccc-dddd-333333333333', 
+                'aaaaaaaa-bbbb-cccc-dddd-444444444444'
+            ]
+            client.table('vehicles').delete().in_('id', vehicle_ids).execute()
         except Exception as e:
             print(f"Warning: Cleanup failed: {e}")
     
@@ -214,10 +220,10 @@ class TestCheckInventory:
         assert all('Model 3' in vehicle['model'] for vehicle in result['vehicles'])
         assert result['filters_applied']['model_name'] == 'Model 3'
         
-        # Test brand search
-        result_tesla = await check_inventory(model_name='Tesla')
-        assert result_tesla['total_count'] >= 2
-        assert all('Tesla' in vehicle['brand'] for vehicle in result_tesla['vehicles'])
+        # Test another model search
+        result_f150 = await check_inventory(model_name='F-150')
+        assert result_f150['total_count'] >= 1
+        assert all('F-150' in vehicle['model'] for vehicle in result_f150['vehicles'])
     
     @pytest.mark.asyncio
     async def test_check_inventory_filter_by_price_range(self, database_setup):

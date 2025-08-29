@@ -4,7 +4,7 @@ Simple, DRY endpoints that directly wrap existing tool functions.
 """
 
 import time
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from datetime import datetime
 
 # Import tool functions
@@ -61,9 +61,24 @@ async def create_tool_response(tool_name: str, tool_func, **kwargs) -> ToolRespo
         raise HTTPException(status_code=500, detail=f"{tool_name} failed: {str(e)}")
 
 
-async def get_calendar_service(user_email: str):
+async def get_calendar_service(user_email: str = None, request: Request = None):
     """Get authenticated calendar service for user."""
     try:
+        # Try to use service from app state first (faster, already authenticated)
+        if (request and hasattr(request.app.state, 'calendar_service') and 
+            hasattr(request.app.state, 'calendar_email')):
+            
+            # Use stored service if no specific email requested or emails match
+            if not user_email or user_email == request.app.state.calendar_email:
+                return request.app.state.calendar_service
+        
+        # Fallback to creating new service for specific user
+        if not user_email:
+            import os
+            user_email = os.getenv('GOOGLE_USER_EMAIL')
+            if not user_email:
+                raise ValueError("No user email available for calendar authentication")
+                
         return await create_service(user_email)
     except Exception as e:
         raise HTTPException(status_code=401, detail=f"Calendar authentication failed: {str(e)}")
@@ -93,147 +108,147 @@ async def health_check():
 # =============================================================================
 
 @router.post("/calendar/list-calendars", response_model=ToolResponse)
-async def list_calendars_endpoint(request: ListCalendarsRequest):
+async def list_calendars_endpoint(request_data: ListCalendarsRequest, request: Request):
     """List Google Calendar calendars."""
-    service = await get_calendar_service(request.user_email)
+    service = await get_calendar_service(request_data.user_email, request)
     
     return await create_tool_response(
         "list_calendars",
         list_calendars,
         service=service,
-        max_results=request.max_results,
-        show_hidden=request.show_hidden,
-        query_strings=request.query_strings,
-        query_string_to_include=request.query_string_to_include
+        max_results=request_data.max_results,
+        show_hidden=request_data.show_hidden,
+        query_strings=request_data.query_strings,
+        query_string_to_include=request_data.query_string_to_include
     )
 
 
 @router.post("/calendar/get-availability", response_model=ToolResponse)
-async def get_availability_endpoint(request: GetAvailabilityRequest):
+async def get_availability_endpoint(request_data: GetAvailabilityRequest, request: Request):
     """Get calendar availability."""
-    service = await get_calendar_service(request.user_email)
+    service = await get_calendar_service(request_data.user_email, request)
     
     return await create_tool_response(
         "get_availability",
         get_availability,
         service=service,
-        calendar_ids=request.calendar_ids,
-        start_time=request.start_time,
-        end_time=request.end_time,
-        working_hours_start=request.working_hours_start,
-        working_hours_end=request.working_hours_end,
-        working_days=request.working_days,
-        time_zone=request.time_zone
+        calendar_ids=request_data.calendar_ids,
+        start_time=request_data.start_time,
+        end_time=request_data.end_time,
+        working_hours_start=request_data.working_hours_start,
+        working_hours_end=request_data.working_hours_end,
+        working_days=request_data.working_days,
+        time_zone=request_data.time_zone
     )
 
 
 @router.post("/calendar/get-events", response_model=ToolResponse)
-async def get_events_endpoint(request: GetEventsRequest):
+async def get_events_endpoint(request_data: GetEventsRequest, request: Request):
     """Get calendar events."""
-    service = await get_calendar_service(request.user_email)
+    service = await get_calendar_service(request_data.user_email, request)
     
     return await create_tool_response(
         "get_events",
         get_events,
         service=service,
-        calendar_ids=request.calendar_ids,
-        event_id=request.event_id,
-        time_min=request.time_min,
-        time_max=request.time_max,
-        query=request.query,
-        max_results=request.max_results,
-        order_by=request.order_by,
-        show_deleted=request.show_deleted,
-        time_zone=request.time_zone
+        calendar_ids=request_data.calendar_ids,
+        event_id=request_data.event_id,
+        time_min=request_data.time_min,
+        time_max=request_data.time_max,
+        query=request_data.query,
+        max_results=request_data.max_results,
+        order_by=request_data.order_by,
+        show_deleted=request_data.show_deleted,
+        time_zone=request_data.time_zone
     )
 
 
 @router.post("/calendar/create-event", response_model=ToolResponse)
-async def create_event_endpoint(request: CreateEventRequest):
+async def create_event_endpoint(request_data: CreateEventRequest, request: Request):
     """Create calendar event."""
-    service = await get_calendar_service(request.user_email)
+    service = await get_calendar_service(request_data.user_email, request)
     
     return await create_tool_response(
         "create_event",
         create_event,
         service=service,
-        calendar_id=request.calendar_id,
-        summary=request.summary,
-        start_time=request.start_time,
-        end_time=request.end_time,
-        description=request.description,
-        location=request.location,
-        timezone=request.timezone,
-        all_day=request.all_day,
-        attendees=request.attendees,
-        optional_attendees=request.optional_attendees,
-        create_google_meet=request.create_google_meet,
-        send_notifications=request.send_notifications,
-        guests_can_invite_others=request.guests_can_invite_others,
-        guests_can_modify=request.guests_can_modify,
-        guests_can_see_others=request.guests_can_see_others,
-        visibility=request.visibility,
-        color_id=request.color_id,
-        recurrence_rule=request.recurrence_rule,
-        email_reminder_minutes=request.email_reminder_minutes,
-        popup_reminder_minutes=request.popup_reminder_minutes,
-        use_default_reminders=request.use_default_reminders
+        calendar_id=request_data.calendar_id,
+        summary=request_data.summary,
+        start_time=request_data.start_time,
+        end_time=request_data.end_time,
+        description=request_data.description,
+        location=request_data.location,
+        timezone=request_data.timezone,
+        all_day=request_data.all_day,
+        attendees=request_data.attendees,
+        optional_attendees=request_data.optional_attendees,
+        create_google_meet=request_data.create_google_meet,
+        send_notifications=request_data.send_notifications,
+        guests_can_invite_others=request_data.guests_can_invite_others,
+        guests_can_modify=request_data.guests_can_modify,
+        guests_can_see_others=request_data.guests_can_see_others,
+        visibility=request_data.visibility,
+        color_id=request_data.color_id,
+        recurrence_rule=request_data.recurrence_rule,
+        email_reminder_minutes=request_data.email_reminder_minutes,
+        popup_reminder_minutes=request_data.popup_reminder_minutes,
+        use_default_reminders=request_data.use_default_reminders
     )
 
 
 @router.post("/calendar/update-event", response_model=ToolResponse)
-async def update_event_endpoint(request: UpdateEventRequest):
+async def update_event_endpoint(request_data: UpdateEventRequest, request: Request):
     """Update calendar event."""
-    service = await get_calendar_service(request.user_email)
+    service = await get_calendar_service(request_data.user_email, request)
     
     return await create_tool_response(
         "update_event",
         update_event,
         service=service,
-        event_id=request.event_id,
-        calendar_id=request.calendar_id,
-        summary=request.summary,
-        description=request.description,
-        location=request.location,
-        start_time=request.start_time,
-        end_time=request.end_time,
-        timezone=request.timezone,
-        all_day=request.all_day,
-        attendees=request.attendees,
-        optional_attendees=request.optional_attendees,
-        attendee_action=request.attendee_action,
-        create_google_meet=request.create_google_meet,
-        remove_google_meet=request.remove_google_meet,
-        send_notifications=request.send_notifications,
-        guests_can_invite_others=request.guests_can_invite_others,
-        guests_can_modify=request.guests_can_modify,
-        guests_can_see_others=request.guests_can_see_others,
-        visibility=request.visibility,
-        color_id=request.color_id,
-        status=request.status,
-        recurrence_rule=request.recurrence_rule,
-        remove_recurrence=request.remove_recurrence,
-        recurring_update_scope=request.recurring_update_scope,
-        email_reminder_minutes=request.email_reminder_minutes,
-        popup_reminder_minutes=request.popup_reminder_minutes,
-        use_default_reminders=request.use_default_reminders,
-        clear_all_reminders=request.clear_all_reminders
+        event_id=request_data.event_id,
+        calendar_id=request_data.calendar_id,
+        summary=request_data.summary,
+        description=request_data.description,
+        location=request_data.location,
+        start_time=request_data.start_time,
+        end_time=request_data.end_time,
+        timezone=request_data.timezone,
+        all_day=request_data.all_day,
+        attendees=request_data.attendees,
+        optional_attendees=request_data.optional_attendees,
+        attendee_action=request_data.attendee_action,
+        create_google_meet=request_data.create_google_meet,
+        remove_google_meet=request_data.remove_google_meet,
+        send_notifications=request_data.send_notifications,
+        guests_can_invite_others=request_data.guests_can_invite_others,
+        guests_can_modify=request_data.guests_can_modify,
+        guests_can_see_others=request_data.guests_can_see_others,
+        visibility=request_data.visibility,
+        color_id=request_data.color_id,
+        status=request_data.status,
+        recurrence_rule=request_data.recurrence_rule,
+        remove_recurrence=request_data.remove_recurrence,
+        recurring_update_scope=request_data.recurring_update_scope,
+        email_reminder_minutes=request_data.email_reminder_minutes,
+        popup_reminder_minutes=request_data.popup_reminder_minutes,
+        use_default_reminders=request_data.use_default_reminders,
+        clear_all_reminders=request_data.clear_all_reminders
     )
 
 
 @router.post("/calendar/delete-event", response_model=ToolResponse)
-async def delete_event_endpoint(request: DeleteEventRequest):
+async def delete_event_endpoint(request_data: DeleteEventRequest, request: Request):
     """Delete calendar event."""
-    service = await get_calendar_service(request.user_email)
+    service = await get_calendar_service(request_data.user_email, request)
     
     return await create_tool_response(
         "delete_event",
         delete_event,
         service=service,
-        event_id=request.event_id,
-        calendar_id=request.calendar_id,
-        send_notifications=request.send_notifications,
-        force_delete=request.force_delete
+        event_id=request_data.event_id,
+        calendar_id=request_data.calendar_id,
+        send_notifications=request_data.send_notifications,
+        force_delete=request_data.force_delete
     )
 
 
@@ -242,30 +257,29 @@ async def delete_event_endpoint(request: DeleteEventRequest):
 # =============================================================================
 
 @router.post("/knowledge-base/fetch-latest", response_model=ToolResponse)
-async def fetch_latest_kb_endpoint(request: FetchLatestKbRequest):
+async def fetch_latest_kb_endpoint(request_data: FetchLatestKbRequest):
     """Fetch latest knowledge base from GitHub."""
     return await create_tool_response(
         "fetch_latest_kb",
         fetch_latest_kb,
-        github_raw_urls=request.github_raw_urls,
-        cache_duration_minutes=request.cache_duration_minutes,
-        max_file_size_mb=request.max_file_size_mb,
-        timeout_seconds=request.timeout_seconds
+        github_raw_urls=request_data.github_raw_urls,
+        cache_duration_minutes=request_data.cache_duration_minutes,
+        max_file_size_mb=request_data.max_file_size_mb,
+        timeout_seconds=request_data.timeout_seconds
     )
 
 
 @router.post("/knowledge-base/sync", response_model=ToolResponse)
-async def sync_knowledge_base_endpoint(request: SyncKnowledgeBaseRequest):
+async def sync_knowledge_base_endpoint(request_data: SyncKnowledgeBaseRequest):
     """Sync knowledge base with Vapi."""
     return await create_tool_response(
         "sync_knowledge_base",
         sync_knowledge_base,
-        vapi_api_key=request.vapi_api_key,
-        knowledge_base_tool_id=request.knowledge_base_tool_id,
-        markdown_files=request.markdown_files,
-        file_name_prefix=request.file_name_prefix,
-        vapi_base_url=request.vapi_base_url,
-        timeout_seconds=request.timeout_seconds
+        knowledge_base_tool_id=request_data.knowledge_base_tool_id,
+        markdown_files=request_data.markdown_files,
+        file_name_prefix=request_data.file_name_prefix,
+        vapi_base_url=request_data.vapi_base_url,
+        timeout_seconds=request_data.timeout_seconds
     )
 
 
@@ -274,66 +288,66 @@ async def sync_knowledge_base_endpoint(request: SyncKnowledgeBaseRequest):
 # =============================================================================
 
 @router.post("/inventory/check-inventory", response_model=ToolResponse)
-async def check_inventory_endpoint(request: CheckInventoryRequest):
+async def check_inventory_endpoint(request_data: CheckInventoryRequest):
     """Check vehicle inventory."""
     return await create_tool_response(
         "check_inventory",
         check_inventory,
-        category=request.category,
-        model_name=request.model_name,
-        min_price=request.min_price,
-        max_price=request.max_price,
-        features=request.features,
-        status=request.status
+        category=request_data.category,
+        model_name=request_data.model_name,
+        min_price=request_data.min_price,
+        max_price=request_data.max_price,
+        features=request_data.features,
+        status=request_data.status
     )
 
 
 @router.post("/inventory/get-delivery-dates", response_model=ToolResponse)
-async def get_delivery_dates_endpoint(request: GetExpectedDeliveryDatesRequest):
+async def get_delivery_dates_endpoint(request_data: GetExpectedDeliveryDatesRequest):
     """Get expected delivery dates."""
     return await create_tool_response(
         "get_expected_delivery_dates",
         get_expected_delivery_dates,
-        vehicle_id=request.vehicle_id,
-        features=request.features
+        vehicle_id=request_data.vehicle_id,
+        features=request_data.features
     )
 
 
 @router.post("/inventory/get-prices", response_model=ToolResponse)
-async def get_prices_endpoint(request: GetPricesRequest):
+async def get_prices_endpoint(request_data: GetPricesRequest):
     """Get vehicle prices."""
     return await create_tool_response(
         "get_prices",
         get_prices,
-        query_type=request.query_type,
-        vehicle_id=request.vehicle_id,
-        inventory_id=request.inventory_id,
-        features=request.features
+        query_type=request_data.query_type,
+        vehicle_id=request_data.vehicle_id,
+        inventory_id=request_data.inventory_id,
+        features=request_data.features
     )
 
 
 @router.post("/inventory/get-similar-vehicles", response_model=ToolResponse)
-async def get_similar_vehicles_endpoint(request: GetSimilarVehiclesRequest):
+async def get_similar_vehicles_endpoint(request_data: GetSimilarVehiclesRequest):
     """Get similar vehicles."""
     return await create_tool_response(
         "get_similar_vehicles",
         get_similar_vehicles,
-        reference_vehicle_id=request.reference_vehicle_id,
-        max_results=request.max_results,
-        price_tolerance_percent=request.price_tolerance_percent,
-        include_unavailable=request.include_unavailable
+        reference_vehicle_id=request_data.reference_vehicle_id,
+        max_results=request_data.max_results,
+        price_tolerance_percent=request_data.price_tolerance_percent,
+        include_unavailable=request_data.include_unavailable
     )
 
 
 @router.post("/inventory/get-vehicle-details", response_model=ToolResponse)
-async def get_vehicle_details_endpoint(request: GetVehicleDetailsRequest):
+async def get_vehicle_details_endpoint(request_data: GetVehicleDetailsRequest):
     """Get vehicle details."""
     return await create_tool_response(
         "get_vehicle_details",
         get_vehicle_details,
-        vehicle_id=request.vehicle_id,
-        inventory_id=request.inventory_id,
-        include_pricing=request.include_pricing,
-        include_similar=request.include_similar
+        vehicle_id=request_data.vehicle_id,
+        inventory_id=request_data.inventory_id,
+        include_pricing=request_data.include_pricing,
+        include_similar=request_data.include_similar
     )
 

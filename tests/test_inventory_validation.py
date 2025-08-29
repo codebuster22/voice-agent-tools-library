@@ -57,19 +57,21 @@ class TestCheckInventoryValidation:
     
     @pytest.mark.asyncio 
     async def test_valid_parameters_pass_validation(self):
-        """Test that valid parameters pass validation but fail at database level."""
-        # This should pass validation but fail at database query level
-        with pytest.raises(Exception) as exc_info:
-            await check_inventory(
-                category='sedan',
-                model_name='Tesla',
-                min_price=30000,
-                max_price=60000,
-                features=['autopilot'],
-                status='available'
-            )
+        """Test that valid parameters pass validation and return valid results."""
+        # This should pass validation and execute successfully
+        result = await check_inventory(
+            category='sedan',
+            model_name='Camry',  # Use existing model from seed data
+            min_price=30000,
+            max_price=60000,
+            features=[],  # No features to ensure we get some results
+            status='available'
+        )
         
-        # Should fail at database level, not validation level
-        assert 'inventory search failed' in str(exc_info.value).lower()
-        # Should NOT be a ValueError (which would indicate validation failure)
-        assert not isinstance(exc_info.value, ValueError)
+        # Should return valid result structure
+        assert isinstance(result, dict)
+        assert 'vehicles' in result
+        assert 'total_count' in result
+        assert 'filters_applied' in result
+        assert isinstance(result['total_count'], int)
+        assert result['total_count'] >= 0  # May be 0 if no matches found

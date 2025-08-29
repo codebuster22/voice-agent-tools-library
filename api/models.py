@@ -24,7 +24,7 @@ class BaseResponse(BaseModel):
 
 class ListCalendarsRequest(BaseModel):
     """Request model for list_calendars tool."""
-    user_email: str = Field(..., description="User email for authentication")
+    user_email: Optional[str] = Field(None, description="User email for authentication (uses server default if not provided)")
     max_results: int = Field(100, ge=1, le=1000)
     show_hidden: bool = False
     query_strings: Optional[List[str]] = None
@@ -33,7 +33,7 @@ class ListCalendarsRequest(BaseModel):
 
 class GetAvailabilityRequest(BaseModel):
     """Request model for get_availability tool."""
-    user_email: str = Field(..., description="User email for authentication")
+    user_email: Optional[str] = Field(None, description="User email for authentication (uses server default if not provided)")
     calendar_ids: Optional[List[str]] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
@@ -45,7 +45,7 @@ class GetAvailabilityRequest(BaseModel):
 
 class GetEventsRequest(BaseModel):
     """Request model for get_events tool."""
-    user_email: str = Field(..., description="User email for authentication")
+    user_email: Optional[str] = Field(None, description="User email for authentication (uses server default if not provided)")
     calendar_ids: Optional[List[str]] = None
     event_id: Optional[str] = None
     time_min: Optional[datetime] = None
@@ -59,7 +59,7 @@ class GetEventsRequest(BaseModel):
 
 class CreateEventRequest(BaseModel):
     """Request model for create_event tool."""
-    user_email: str = Field(..., description="User email for authentication")
+    user_email: Optional[str] = Field(None, description="User email for authentication (uses server default if not provided)")
     calendar_id: str
     summary: str
     start_time: str
@@ -85,7 +85,7 @@ class CreateEventRequest(BaseModel):
 
 class UpdateEventRequest(BaseModel):
     """Request model for update_event tool."""
-    user_email: str = Field(..., description="User email for authentication")
+    user_email: Optional[str] = Field(None, description="User email for authentication (uses server default if not provided)")
     event_id: str
     calendar_id: str
     summary: Optional[str] = None
@@ -118,7 +118,7 @@ class UpdateEventRequest(BaseModel):
 
 class DeleteEventRequest(BaseModel):
     """Request model for delete_event tool."""
-    user_email: str = Field(..., description="User email for authentication")
+    user_email: Optional[str] = Field(None, description="User email for authentication (uses server default if not provided)")
     event_id: str
     calendar_id: str = "primary"
     send_notifications: bool = True
@@ -139,7 +139,6 @@ class FetchLatestKbRequest(BaseModel):
 
 class SyncKnowledgeBaseRequest(BaseModel):
     """Request model for sync_knowledge_base tool."""
-    vapi_api_key: str
     knowledge_base_tool_id: str
     markdown_files: List[Dict[str, str]] = Field(..., min_length=1)
     file_name_prefix: str = "kb_"
