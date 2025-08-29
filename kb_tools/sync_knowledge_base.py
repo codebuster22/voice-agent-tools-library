@@ -20,45 +20,44 @@ import io
 load_dotenv()
 
 
-async def sync_knowledge_base(
-    knowledge_base_tool_id: str,
-    markdown_files: List[Dict[str, str]],
-    file_name_prefix: str = "kb_",
-    vapi_base_url: str = "https://api.vapi.ai",
-    timeout_seconds: int = 30
-) -> Dict[str, Any]:
+async def sync_knowledge_base() -> Dict[str, Any]:
     """
-    Complete Vapi knowledge base synchronization workflow
-    
-    Args:
-        knowledge_base_tool_id: Existing knowledge base tool ID to update
-        markdown_files: List of markdown files from fetch_latest_kb
-        file_name_prefix: Prefix for knowledge base file identification  
-        vapi_base_url: Vapi API base URL
-        timeout_seconds: Request timeout in seconds
+    Complete Vapi knowledge base synchronization workflow using environment configuration.
+    Fetches latest knowledge base content and syncs it with VAPI automatically.
+    All parameters are loaded from environment variables for consistent voice agent operation.
         
     Returns:
         Dict containing sync results and metadata
         
     Raises:
-        ValueError: Invalid input parameters
+        ValueError: Missing or invalid environment configuration
         Exception: API, network, or processing errors
     """
-    # Get API key from environment
+    # Load configuration from environment variables
     vapi_api_key = os.getenv("VAPI_API_KEY")
     if not vapi_api_key:
         raise ValueError("VAPI_API_KEY environment variable is required")
     
-    if not knowledge_base_tool_id or not knowledge_base_tool_id.strip():
-        raise ValueError("Knowledge base tool ID is required")
+    knowledge_base_tool_id = os.getenv("VAPI_KNOWLEDGE_BASE_TOOL_ID")
+    if not knowledge_base_tool_id:
+        raise ValueError("VAPI_KNOWLEDGE_BASE_TOOL_ID environment variable is required")
     
-    if not markdown_files:
-        raise ValueError("Must provide at least one markdown file")
+    file_name_prefix = os.getenv("KB_FILE_NAME_PREFIX", "kb_")
+    vapi_base_url = os.getenv("VAPI_BASE_URL", "https://api.vapi.ai")
+    timeout_seconds = int(os.getenv("KB_TIMEOUT_SECONDS", "30"))
     
-    # Validate markdown files structure
-    for file_data in markdown_files:
-        if not all(key in file_data for key in ["filename", "content"]):
-            raise ValueError("Each markdown file must have 'filename' and 'content' fields")
+    # Fetch latest knowledge base content
+    from kb_tools.fetch_latest_kb import fetch_latest_kb
+    
+    try:
+        kb_result = await fetch_latest_kb()
+        markdown_files = kb_result["files"]
+        
+        if not markdown_files:
+            raise ValueError("No markdown files found from knowledge base fetch")
+        
+    except Exception as e:
+        raise Exception(f"Failed to fetch knowledge base content: {str(e)}")
     
     start_time = datetime.now()
     

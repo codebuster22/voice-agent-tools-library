@@ -110,7 +110,7 @@ async def health_check():
 @router.post("/calendar/list-calendars", response_model=ToolResponse)
 async def list_calendars_endpoint(request_data: ListCalendarsRequest, request: Request):
     """List Google Calendar calendars."""
-    service = await get_calendar_service(request_data.user_email, request)
+    service = await get_calendar_service(None, request)
     
     return await create_tool_response(
         "list_calendars",
@@ -126,7 +126,7 @@ async def list_calendars_endpoint(request_data: ListCalendarsRequest, request: R
 @router.post("/calendar/get-availability", response_model=ToolResponse)
 async def get_availability_endpoint(request_data: GetAvailabilityRequest, request: Request):
     """Get calendar availability."""
-    service = await get_calendar_service(request_data.user_email, request)
+    service = await get_calendar_service(None, request)
     
     return await create_tool_response(
         "get_availability",
@@ -145,7 +145,7 @@ async def get_availability_endpoint(request_data: GetAvailabilityRequest, reques
 @router.post("/calendar/get-events", response_model=ToolResponse)
 async def get_events_endpoint(request_data: GetEventsRequest, request: Request):
     """Get calendar events."""
-    service = await get_calendar_service(request_data.user_email, request)
+    service = await get_calendar_service(None, request)
     
     return await create_tool_response(
         "get_events",
@@ -166,7 +166,7 @@ async def get_events_endpoint(request_data: GetEventsRequest, request: Request):
 @router.post("/calendar/create-event", response_model=ToolResponse)
 async def create_event_endpoint(request_data: CreateEventRequest, request: Request):
     """Create calendar event."""
-    service = await get_calendar_service(request_data.user_email, request)
+    service = await get_calendar_service(None, request)
     
     return await create_tool_response(
         "create_event",
@@ -199,7 +199,7 @@ async def create_event_endpoint(request_data: CreateEventRequest, request: Reque
 @router.post("/calendar/update-event", response_model=ToolResponse)
 async def update_event_endpoint(request_data: UpdateEventRequest, request: Request):
     """Update calendar event."""
-    service = await get_calendar_service(request_data.user_email, request)
+    service = await get_calendar_service(None, request)
     
     return await create_tool_response(
         "update_event",
@@ -239,7 +239,7 @@ async def update_event_endpoint(request_data: UpdateEventRequest, request: Reque
 @router.post("/calendar/delete-event", response_model=ToolResponse)
 async def delete_event_endpoint(request_data: DeleteEventRequest, request: Request):
     """Delete calendar event."""
-    service = await get_calendar_service(request_data.user_email, request)
+    service = await get_calendar_service(None, request)
     
     return await create_tool_response(
         "delete_event",
@@ -258,28 +258,19 @@ async def delete_event_endpoint(request_data: DeleteEventRequest, request: Reque
 
 @router.post("/knowledge-base/fetch-latest", response_model=ToolResponse)
 async def fetch_latest_kb_endpoint(request_data: FetchLatestKbRequest):
-    """Fetch latest knowledge base from GitHub."""
+    """Fetch latest knowledge base from GitHub using server configuration."""
     return await create_tool_response(
         "fetch_latest_kb",
-        fetch_latest_kb,
-        github_raw_urls=request_data.github_raw_urls,
-        cache_duration_minutes=request_data.cache_duration_minutes,
-        max_file_size_mb=request_data.max_file_size_mb,
-        timeout_seconds=request_data.timeout_seconds
+        fetch_latest_kb
     )
 
 
 @router.post("/knowledge-base/sync", response_model=ToolResponse)
 async def sync_knowledge_base_endpoint(request_data: SyncKnowledgeBaseRequest):
-    """Sync knowledge base with Vapi."""
+    """Sync knowledge base with VAPI using server configuration."""
     return await create_tool_response(
         "sync_knowledge_base",
-        sync_knowledge_base,
-        knowledge_base_tool_id=request_data.knowledge_base_tool_id,
-        markdown_files=request_data.markdown_files,
-        file_name_prefix=request_data.file_name_prefix,
-        vapi_base_url=request_data.vapi_base_url,
-        timeout_seconds=request_data.timeout_seconds
+        sync_knowledge_base
     )
 
 

@@ -519,34 +519,10 @@ class VapiToolManager:
             CreateFunctionToolDto(
                 function=OpenAiFunction(
                     name="fetch_latest_knowledge_base",
-                    description="Fetch the latest knowledge base content from GitHub raw URLs including dealership information, financing options, services, and current offers. Updates the dealership's knowledge base with fresh content.",
+                    description="Fetch the latest knowledge base content from configured GitHub sources including dealership information, financing options, services, and current offers. Updates automatically using server configuration.",
                     parameters={
                         "type": "object",
-                        "properties": {
-                            "kb_about_company_url": {
-                                "type": "string",
-                                "description": "GitHub raw URL for about-company.md file"
-                            },
-                            "kb_financing_options_url": {
-                                "type": "string",
-                                "description": "GitHub raw URL for financing-options.md file"
-                            },
-                            "kb_services_provided_url": {
-                                "type": "string",
-                                "description": "GitHub raw URL for services-provided.md file"
-                            },
-                            "kb_current_offers_url": {
-                                "type": "string",
-                                "description": "GitHub raw URL for current-offers.md file"
-                            },
-                            "timeout_seconds": {
-                                "type": "integer",
-                                "minimum": 5,
-                                "maximum": 60,
-                                "default": 30,
-                                "description": "Request timeout in seconds for fetching content"
-                            }
-                        },
+                        "properties": {},
                         "required": []
                     }
                 ),
@@ -557,45 +533,11 @@ class VapiToolManager:
             CreateFunctionToolDto(
                 function=OpenAiFunction(
                     name="sync_knowledge_base_to_vapi",
-                    description="Synchronize knowledge base content to VAPI by uploading markdown files and updating the knowledge base tool. Complete workflow for keeping VAPI voice agent updated with latest dealership information.",
+                    description="Synchronize knowledge base content to VAPI automatically. Fetches latest content from configured sources and updates VAPI knowledge base. Complete workflow for keeping voice agent updated with latest dealership information.",
                     parameters={
                         "type": "object",
-                        "properties": {
-                            "knowledge_base_tool_id": {
-                                "type": "string",
-                                "description": "Existing VAPI knowledge base tool ID to update with new files"
-                            },
-                            "markdown_files": {
-                                "type": "array",
-                                "items": {
-                                    "type": "object",
-                                    "properties": {
-                                        "filename": {"type": "string"},
-                                        "content": {"type": "string"}
-                                    },
-                                    "required": ["filename", "content"]
-                                },
-                                "description": "List of markdown files with filename and content"
-                            },
-                            "file_name_prefix": {
-                                "type": "string",
-                                "default": "kb_",
-                                "description": "Prefix for knowledge base file names in VAPI"
-                            },
-                            "vapi_base_url": {
-                                "type": "string",
-                                "default": "https://api.vapi.ai",
-                                "description": "VAPI API base URL"
-                            },
-                            "timeout_seconds": {
-                                "type": "integer",
-                                "minimum": 5,
-                                "maximum": 120,
-                                "default": 60,
-                                "description": "Request timeout in seconds for VAPI operations"
-                            }
-                        },
-                        "required": ["knowledge_base_tool_id", "markdown_files"]
+                        "properties": {},
+                        "required": []
                     }
                 ),
                 server=Server(url=f"{self.server_base_url}/api/v1/knowledge-base/sync")
@@ -659,7 +601,7 @@ You have access to 13 specialized tools covering inventory management, calendar 
                     ]
                 },
                 voice=ElevenLabsVoice(
-                    voice_id="adam"  # Professional male voice
+                    voice_id="pNInz6obpgDQGcFmaJgB"  # Adam voice ID from 11Labs
                 ),
                 first_message="Hello! I'm your automotive dealership assistant. I can help you find the perfect vehicle, schedule appointments, and answer questions about our services. How can I help you today?",
                 server_url_secret="",  # Not using webhooks - direct tool mapping
@@ -670,7 +612,7 @@ You have access to 13 specialized tools covering inventory management, calendar 
                 language="en"
             )
             
-            result = self.client.assistants.create(request=assistant_dto)
+            result = self.client.assistants.create(**assistant_dto.__dict__)
             print(f"✅ Created automotive assistant (ID: {result.id})")
             return result.id
             

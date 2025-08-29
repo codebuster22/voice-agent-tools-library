@@ -7,42 +7,43 @@ for car dealership voice agent knowledge synchronization.
 
 import asyncio
 import httpx
+import os
 from datetime import datetime
 from typing import List, Dict, Any
 from urllib.parse import urlparse
 import re
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 
-async def fetch_latest_kb(
-    github_raw_urls: List[str],
-    cache_duration_minutes: int = 30,
-    max_file_size_mb: int = 10,
-    timeout_seconds: int = 30
-) -> Dict[str, Any]:
+async def fetch_latest_kb() -> Dict[str, Any]:
     """
-    Fetch latest knowledge base content from GitHub raw URLs
-    
-    Args:
-        github_raw_urls: List of GitHub raw URLs to fetch
-        cache_duration_minutes: Cache duration for future use (metadata only)
-        max_file_size_mb: Maximum file size in MB (warning threshold)
-        timeout_seconds: Request timeout in seconds
+    Fetch latest knowledge base content from GitHub raw URLs using environment configuration.
+    All parameters are loaded from environment variables for consistent voice agent operation.
         
     Returns:
         Dict containing files data, metadata, and any warnings
         
     Raises:
-        ValueError: Invalid input parameters
+        ValueError: Missing or invalid environment configuration
         Exception: Network, HTTP, or processing errors
     """
-    # Input validation
-    if not github_raw_urls:
-        raise ValueError("Must provide at least one URL")
+    # Load configuration from environment variables
+    github_raw_urls_str = os.getenv("GITHUB_RAW_URLS")
+    if not github_raw_urls_str:
+        raise ValueError("GITHUB_RAW_URLS environment variable is required")
+    
+    github_raw_urls = [url.strip() for url in github_raw_urls_str.split(",")]
+    cache_duration_minutes = int(os.getenv("KB_CACHE_DURATION_MINUTES", "30"))
+    max_file_size_mb = int(os.getenv("KB_MAX_FILE_SIZE_MB", "10"))
+    timeout_seconds = int(os.getenv("KB_TIMEOUT_SECONDS", "30"))
     
     # Validate URLs
     for url in github_raw_urls:
         if not _is_valid_url(url):
-            raise ValueError(f"Invalid URL format: {url}")
+            raise ValueError(f"Invalid URL format in GITHUB_RAW_URLS: {url}")
     
     start_time = datetime.now()
     files = []
