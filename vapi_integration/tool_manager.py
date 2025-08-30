@@ -145,15 +145,15 @@ class VapiToolManager:
                                 "type": "integer",
                                 "minimum": 1,
                                 "maximum": 20,
-                                "default": 10,
+                                "default": 5,
                                 "description": "Maximum number of similar vehicles to return"
                             },
-                            "similarity_threshold": {
-                                "type": "number",
-                                "minimum": 0.0,
-                                "maximum": 1.0,
-                                "default": 0.7,
-                                "description": "Minimum similarity score (0-1) for vehicle matching"
+                            "price_tolerance_percent": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 100,
+                                "default": 20,
+                                "description": "Price tolerance as percentage (e.g., 20 = ±20% from reference vehicle price)"
                             },
                             "include_unavailable": {
                                 "type": "boolean",
@@ -180,13 +180,23 @@ class VapiToolManager:
                                 "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
                                 "description": "Vehicle ID to get detailed information for (UUID format)"
                             },
-                            "include_inventory_details": {
+                            "inventory_id": {
+                                "type": "string",
+                                "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+                                "description": "Specific inventory item ID for exact details of a particular car on the lot (preferred over vehicle_id)"
+                            },
+                            "include_pricing": {
                                 "type": "boolean",
                                 "default": True,
-                                "description": "Whether to include specific inventory lot information and availability"
+                                "description": "Whether to include detailed pricing breakdown and financing estimates"
+                            },
+                            "include_similar": {
+                                "type": "boolean",
+                                "default": False,
+                                "description": "Whether to include similar vehicle suggestions for alternatives"
                             }
                         },
-                        "required": ["vehicle_id"]
+                        "required": []
                     }
                 ),
                 server=Server(url=f"{self.server_base_url}/api/v1/inventory/get-vehicle-details")

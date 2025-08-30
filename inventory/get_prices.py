@@ -40,7 +40,8 @@ async def get_prices(
         raise ValueError(f"Invalid query_type '{query_type}'. Must be one of: {valid_query_types}")
     
     if query_type == "specific" and not vehicle_id and not inventory_id:
-        raise ValueError("Either vehicle_id or inventory_id is required for specific pricing")
+        # Instead of error, provide helpful price range overview
+        query_type = "price_range_overview"
     
     try:
         client = get_supabase_client()
@@ -49,6 +50,8 @@ async def get_prices(
             return await _get_specific_pricing(client, vehicle_id, inventory_id, features)
         elif query_type == "by_features":
             return await _get_feature_based_pricing(client, features)
+        elif query_type == "price_range_overview":
+            return await _get_price_range_overview(client)
             
     except ValueError:
         raise
@@ -300,4 +303,70 @@ def _calculate_price_breakdown(vehicle_data: Dict, inventory_data: Optional[Dict
         'final_price_dollars': final_price_dollars,
         'savings_from_discount': discount_dollars > 0,
         'price_currency': 'USD'
+    }
+
+
+async def _get_price_range_overview(client) -> Dict[str, Any]:
+    """Get price range overview when no specific vehicle requested."""
+    
+    # Query available inventory with pricing
+    response = client.table('inventory').select("""
+        current_price,
+        vehicles!inner(
+            brand,
+            model,
+            category,
+            base_price
+        )
+    """).eq('status', 'available').execute()
+    
+    if not response.data:
+        return {
+            'message': 'No vehicles available in inventory',
+            'price_range_overview': None
+        }
+    
+    # Calculate price statistics
+    prices = [item['current_price'] // 100 for item in response.data]  # Convert to dollars
+    categories = {}
+    
+    for item in response.data:
+        category = item['vehicles']['category']
+        price = item['current_price'] // 100
+        
+        if category not in categories:
+            categories[category] = {'prices': [], 'examples': []}
+        
+        categories[category]['prices'].append(price)
+        categories[category]['examples'].append(
+            f"{item['vehicles']['brand']} {item['vehicles']['model']}"
+        )
+    
+    # Calculate overall statistics
+    min_price = min(prices)
+    max_price = max(prices)
+    avg_price = sum(prices) // len(prices)
+    
+    # Calculate category breakdown
+    category_breakdown = {}
+    for cat, data in categories.items():
+        cat_prices = data['prices']
+        category_breakdown[cat] = {
+            'min_price_dollars': min(cat_prices),
+            'max_price_dollars': max(cat_prices),
+            'avg_price_dollars': sum(cat_prices) // len(cat_prices),
+            'vehicle_count': len(cat_prices),
+            'example_vehicles': list(set(data['examples'][:3]))  # First 3 unique
+        }
+    
+    return {
+        'message': 'Here\'s our current inventory price range overview',
+        'overall_price_range': {
+            'lowest_price_dollars': min_price,
+            'highest_price_dollars': max_price,
+            'average_price_dollars': avg_price,
+            'total_vehicles_available': len(prices)
+        },
+        'price_by_category': category_breakdown,
+        'helpful_hint': 'Ask about specific vehicles or categories for detailed pricing'
     }

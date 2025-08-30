@@ -34,12 +34,12 @@ async def get_vehicle_details(
     """
     from db.connection import get_supabase_client
     
-    # Input validation
-    if not vehicle_id and not inventory_id:
-        raise ValueError("Either vehicle_id or inventory_id is required")
-    
     try:
         client = get_supabase_client()
+        
+        # Input validation - if no specific vehicle requested, return all vehicle details
+        if not vehicle_id and not inventory_id:
+            return await _get_all_vehicle_details(client, include_pricing, include_similar)
         
         # Get vehicle and inventory information
         if inventory_id:
@@ -499,3 +499,86 @@ def _estimate_monthly_payment(price_dollars: int, down_payment_percent: float = 
         monthly_payment = loan_amount * (monthly_rate * (1 + monthly_rate)**num_payments) / ((1 + monthly_rate)**num_payments - 1)
     
     return int(monthly_payment)
+
+
+async def _get_all_vehicle_details(client, include_pricing: bool, include_similar: bool) -> Dict[str, Any]:
+    """Get details for all available vehicles when no specific vehicle requested."""
+    
+    # Query all available vehicles with basic information
+    response = client.table('vehicles').select("""
+        id,
+        brand,
+        model,
+        year,
+        category,
+        base_price,
+        is_active,
+        inventory!inner(
+            id,
+            vin,
+            color,
+            features,
+            current_price,
+            status
+        )
+    """).eq('is_active', True).eq('inventory.status', 'available').execute()
+    
+    if not response.data:
+        return {
+            'message': 'No vehicles available in inventory',
+            'vehicles': []
+        }
+    
+    vehicles_summary = []
+    categories = {}
+    
+    for vehicle_record in response.data:
+        vehicle_data = vehicle_record
+        inventory_items = vehicle_record.get('inventory', [])
+        
+        for inventory_item in inventory_items:
+            # Basic vehicle info
+            vehicle_info = {
+                'vehicle_id': vehicle_data['id'],
+                'inventory_id': inventory_item['id'],
+                'brand': vehicle_data['brand'],
+                'model': vehicle_data['model'],
+                'year': vehicle_data['year'],
+                'category': vehicle_data['category'],
+                'color': inventory_item['color'],
+                'vin': inventory_item['vin'],
+                'features': inventory_item.get('features', []),
+                'current_price_dollars': inventory_item['current_price'] // 100,
+                'status': inventory_item['status']
+            }
+            
+            # Add pricing if requested
+            if include_pricing:
+                vehicle_info['financing_estimate'] = {
+                    'estimated_monthly_payment_dollars': _estimate_monthly_payment(inventory_item['current_price'] // 100)
+                }
+            
+            vehicles_summary.append(vehicle_info)
+            
+            # Category statistics
+            category = vehicle_data['category']
+            if category not in categories:
+                categories[category] = {'count': 0, 'price_range': {'min': None, 'max': None}}
+            
+            categories[category]['count'] += 1
+            price = inventory_item['current_price'] // 100
+            
+            if categories[category]['price_range']['min'] is None or price < categories[category]['price_range']['min']:
+                categories[category]['price_range']['min'] = price
+            if categories[category]['price_range']['max'] is None or price > categories[category]['price_range']['max']:
+                categories[category]['price_range']['max'] = price
+    
+    return {
+        'message': f'Found {len(vehicles_summary)} vehicles available in inventory',
+        'total_vehicles': len(vehicles_summary),
+        'vehicles': vehicles_summary,
+        'inventory_summary': {
+            'by_category': categories,
+            'helpful_hint': 'Ask for details about specific vehicles using their vehicle_id or inventory_id'
+        }
+    }
