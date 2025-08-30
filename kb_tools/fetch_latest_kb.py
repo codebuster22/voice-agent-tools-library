@@ -8,11 +8,13 @@ for car dealership voice agent knowledge synchronization.
 import asyncio
 import httpx
 import os
+import time
 from datetime import datetime
 from typing import List, Dict, Any
 from urllib.parse import urlparse
 import re
 from dotenv import load_dotenv
+from logging_config import github_api_logger
 
 # Load environment variables
 load_dotenv()
@@ -49,6 +51,17 @@ async def fetch_latest_kb() -> Dict[str, Any]:
     files = []
     warnings = []
     
+    # Log the fetch operation start
+    github_api_logger.log_call(
+        "fetch_knowledge_base",
+        params={
+            "url_count": len(github_raw_urls),
+            "cache_duration": cache_duration_minutes,
+            "max_file_size_mb": max_file_size_mb,
+            "timeout": timeout_seconds
+        }
+    )
+    
     # Configure HTTP client with proper headers and timeout
     headers = {
         "User-Agent": "Elite Motors KB Sync Tool/1.0",
@@ -71,16 +84,50 @@ async def fetch_latest_kb() -> Dict[str, Any]:
                 warnings.extend(file_warnings)
     
     except httpx.NetworkError as e:
+        fetch_duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+        github_api_logger.log_response(
+            "fetch_knowledge_base",
+            success=False,
+            error=f"Network error: {str(e)}",
+            duration_ms=fetch_duration_ms
+        )
         raise Exception(f"Network error while fetching knowledge base: {str(e)}")
     except httpx.TimeoutException as e:
+        fetch_duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+        github_api_logger.log_response(
+            "fetch_knowledge_base", 
+            success=False,
+            error=f"Timeout: {str(e)}",
+            duration_ms=fetch_duration_ms
+        )
         raise Exception(f"Request timeout while fetching knowledge base: {str(e)}")
     except Exception as e:
+        fetch_duration_ms = (datetime.now() - start_time).total_seconds() * 1000
+        github_api_logger.log_response(
+            "fetch_knowledge_base",
+            success=False,
+            error=str(e),
+            duration_ms=fetch_duration_ms
+        )
         if "Failed to fetch" in str(e) or "Network error" in str(e) or "timeout" in str(e).lower():
             raise
         raise Exception(f"Error fetching knowledge base: {str(e)}")
     
     end_time = datetime.now()
     fetch_duration_ms = (end_time - start_time).total_seconds() * 1000
+    
+    # Log successful response
+    total_size = sum(f["size_bytes"] for f in files)
+    github_api_logger.log_response(
+        "fetch_knowledge_base",
+        success=True,
+        response={
+            "files_count": len(files),
+            "total_size_kb": round(total_size / 1024, 1),
+            "warnings_count": len(warnings)
+        },
+        duration_ms=fetch_duration_ms
+    )
     
     result = {
         "files": files,

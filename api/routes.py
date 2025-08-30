@@ -6,6 +6,7 @@ Simple, DRY endpoints that directly wrap existing tool functions.
 import time
 from fastapi import APIRouter, HTTPException, Request
 from datetime import datetime
+from logging_config import logger
 
 # Import tool functions
 from calendar_tools import create_service
@@ -48,9 +49,51 @@ async def create_tool_response(tool_name: str, tool_func, **kwargs) -> ToolRespo
     """Generic wrapper for tool functions with timing and error handling."""
     start_time = time.time()
     
+    # Log tool execution start
+    logger.info(f"Executing tool: {tool_name}", tool_name=tool_name, operation="start")
+    
+    # Debug level: log parameters
+    if kwargs:
+        # Filter out sensitive data and large objects
+        debug_kwargs = {}
+        for key, value in kwargs.items():
+            if key in ['service', 'credentials']:
+                debug_kwargs[key] = f"<{type(value).__name__}>"
+            elif isinstance(value, str) and len(value) > 100:
+                debug_kwargs[key] = f"{value[:50]}... ({len(value)} chars)"
+            else:
+                debug_kwargs[key] = value
+        
+        logger.debug(f"Tool parameters for {tool_name}", tool_name=tool_name, params=debug_kwargs)
+    
     try:
         data = await tool_func(**kwargs)
         execution_time = (time.time() - start_time) * 1000
+        
+        # Log successful execution
+        logger.info(
+            f"Tool completed successfully: {tool_name}",
+            tool_name=tool_name,
+            operation="success",
+            duration_ms=round(execution_time, 2),
+            result_type=type(data).__name__
+        )
+        
+        # Debug level: log result size/preview
+        if isinstance(data, list):
+            logger.debug(
+                f"Tool result details for {tool_name}",
+                tool_name=tool_name,
+                result_count=len(data),
+                result_preview=data[:2] if len(data) > 0 else []
+            )
+        elif isinstance(data, dict):
+            logger.debug(
+                f"Tool result details for {tool_name}",
+                tool_name=tool_name,
+                result_keys=list(data.keys())[:10] if data else [],
+                result_size=len(str(data))
+            )
         
         # Wrap list results in a dict for ToolResponse compatibility
         if isinstance(data, list):
@@ -62,14 +105,36 @@ async def create_tool_response(tool_name: str, tool_func, **kwargs) -> ToolRespo
             tool_name=tool_name,
             execution_time_ms=round(execution_time, 2)
         )
+        
     except ValueError as e:
+        execution_time = (time.time() - start_time) * 1000
+        logger.error(
+            f"Tool validation error: {tool_name}",
+            tool_name=tool_name,
+            operation="validation_error",
+            error=str(e),
+            error_type=type(e).__name__,
+            duration_ms=round(execution_time, 2)
+        )
         raise HTTPException(status_code=400, detail=str(e))
+        
     except Exception as e:
+        execution_time = (time.time() - start_time) * 1000
+        logger.error(
+            f"Tool execution failed: {tool_name}",
+            tool_name=tool_name,
+            operation="error",
+            error=str(e),
+            error_type=type(e).__name__,
+            duration_ms=round(execution_time, 2)
+        )
         raise HTTPException(status_code=500, detail=f"{tool_name} failed: {str(e)}")
 
 
 async def get_calendar_service(user_email: str = None, request: Request = None):
     """Get authenticated calendar service for user."""
+    logger.debug("Getting calendar service", requested_email=user_email)
+    
     try:
         # Try to use service from app state first (faster, already authenticated)
         if (request and hasattr(request.app.state, 'calendar_service') and 
@@ -77,6 +142,7 @@ async def get_calendar_service(user_email: str = None, request: Request = None):
             
             # Use stored service if no specific email requested or emails match
             if not user_email or user_email == request.app.state.calendar_email:
+                logger.debug("Using cached calendar service", email=request.app.state.calendar_email)
                 return request.app.state.calendar_service
         
         # Fallback to creating new service for specific user
@@ -84,10 +150,16 @@ async def get_calendar_service(user_email: str = None, request: Request = None):
             import os
             user_email = os.getenv('GOOGLE_USER_EMAIL')
             if not user_email:
+                logger.error("No user email available for calendar authentication")
                 raise ValueError("No user email available for calendar authentication")
-                
-        return await create_service(user_email)
+        
+        logger.info("Creating new calendar service", email=user_email)
+        service = await create_service(user_email)
+        logger.debug("Calendar service created successfully", email=user_email)
+        return service
+        
     except Exception as e:
+        logger.error("Calendar authentication failed", error=str(e), error_type=type(e).__name__, user_email=user_email)
         raise HTTPException(status_code=401, detail=f"Calendar authentication failed: {str(e)}")
 
 

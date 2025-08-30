@@ -1,5 +1,7 @@
 import re
+import time
 from typing import List, Optional
+from logging_config import google_calendar_logger
 
 async def list_calendars(
     service, 
@@ -34,11 +36,32 @@ async def list_calendars(
         Exception: If the API call fails
     """
     try:
+        # Log API call
+        google_calendar_logger.log_call(
+            "calendarList.list",
+            params={
+                "maxResults": max_results,
+                "showHidden": show_hidden,
+                "query_filters": len(query_strings) if query_strings else 0
+            }
+        )
+        
+        start_time = time.time()
         request = service.calendarList().list(
             maxResults=max_results,
             showHidden=show_hidden
         )
         response = request.execute()
+        duration_ms = (time.time() - start_time) * 1000
+        
+        # Log successful response
+        calendars_count = len(response.get('items', []))
+        google_calendar_logger.log_response(
+            "calendarList.list",
+            success=True,
+            response={"calendars_count": calendars_count},
+            duration_ms=duration_ms
+        )
         
         calendars = response.get('items', [])
         
@@ -75,6 +98,12 @@ async def list_calendars(
         return _format_calendars(calendars)
         
     except Exception as e:
+        # Log error
+        google_calendar_logger.log_response(
+            "calendarList.list",
+            success=False,
+            error=str(e)
+        )
         raise Exception(f"Failed to list calendars: {str(e)}")
 
 

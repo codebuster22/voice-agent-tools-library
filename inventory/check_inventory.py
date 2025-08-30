@@ -6,6 +6,8 @@ Provides comprehensive vehicle inventory search with filtering capabilities.
 
 from typing import Dict, List, Optional, Any
 import logging
+import time
+from logging_config import database_logger
 
 logger = logging.getLogger(__name__)
 
@@ -41,8 +43,22 @@ async def check_inventory(
     # Input validation
     _validate_inputs(category, model_name, min_price, max_price, features, status)
     
+    # Log database call
+    database_logger.log_call(
+        "search_inventory",
+        params={
+            "category": category,
+            "model_name": model_name,
+            "price_range": f"{min_price}-{max_price}" if min_price or max_price else None,
+            "features_count": len(features) if features else 0,
+            "status": status
+        },
+        level="debug"
+    )
+    
+    start_time = time.time()
+    
     try:
-        
         # Get database client
         client = get_supabase_client()
         
@@ -55,10 +71,30 @@ async def check_inventory(
         # Process and format results
         result = _format_inventory_response(response.data, category, model_name, min_price, max_price, features, status)
         
+        duration_ms = (time.time() - start_time) * 1000
+        
+        # Log successful response
+        database_logger.log_response(
+            "search_inventory",
+            success=True,
+            response={
+                "results_count": result['total_count'],
+                "has_filters": any([category, model_name, min_price, max_price, features])
+            },
+            duration_ms=duration_ms
+        )
+        
         logger.info(f"Found {result['total_count']} vehicles matching filters")
         return result
         
     except Exception as e:
+        duration_ms = (time.time() - start_time) * 1000
+        database_logger.log_response(
+            "search_inventory",
+            success=False,
+            error=str(e),
+            duration_ms=duration_ms
+        )
         logger.error(f"Error searching inventory: {str(e)}")
         raise Exception(f"Inventory search failed: {str(e)}")
 
