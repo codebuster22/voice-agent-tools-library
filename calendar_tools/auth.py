@@ -3,63 +3,21 @@ import json
 import asyncio
 import webbrowser
 from datetime import datetime, timezone
-import dateutil.parser
 from urllib.parse import urlencode, parse_qs, urlparse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
-from pathlib import Path
 
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
+from .token_manager import token_manager
 
 load_dotenv()
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 REDIRECT_URI = 'http://localhost:8080/callback'
 
-def _sync_env_tokens_to_file(email):
-    """Load tokens from GOOGLE_TOKENS_JSON env var and sync to file if needed."""
-    tokens_json = os.getenv('GOOGLE_TOKENS_JSON')
-    if not tokens_json:
-        return False
-    
-    try:
-        env_tokens = json.loads(tokens_json)
-        token_file = Path(f"tokens/{email}_tokens.json")
-        
-        # Check if we need to sync (file doesn't exist or env is newer)
-        should_sync = True
-        if token_file.exists():
-            with open(token_file, 'r') as f:
-                file_tokens = json.load(f)
-            
-            # Compare timestamps
-            env_created_at = dateutil.parser.parse(env_tokens.get('created_at', '1970-01-01T00:00:00+00:00'))
-            file_created_at = dateutil.parser.parse(file_tokens.get('created_at', '1970-01-01T00:00:00+00:00'))
-            
-            if file_created_at >= env_created_at:
-                should_sync = False
-                print("Token file is newer than environment variable, skipping sync")
-        
-        if should_sync:
-            # Ensure tokens directory exists
-            token_file.parent.mkdir(exist_ok=True)
-            
-            # Write env tokens to file
-            with open(token_file, 'w') as f:
-                json.dump(env_tokens, f, indent=2)
-            
-            # Set secure permissions
-            token_file.chmod(0o600)
-            print(f"Synced tokens from environment variable to {token_file}")
-        
-        return True
-        
-    except (json.JSONDecodeError, KeyError, ValueError) as e:
-        print(f"Error parsing GOOGLE_TOKENS_JSON: {e}")
-        return False
 
 class CallbackHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -86,29 +44,20 @@ class CallbackHandler(BaseHTTPRequestHandler):
         pass  # Suppress logging
 
 async def create_service(email=None):
-    """Create authenticated Google Calendar service using OAuth 2.0."""
+    """Create authenticated Google Calendar service using async token manager."""
     if not email:
         email = os.getenv('GOOGLE_USER_EMAIL')
         if not email:
             raise ValueError("Email must be provided either as parameter or in GOOGLE_USER_EMAIL env variable")
     
-    # Sync tokens from environment variable to file if needed
-    _sync_env_tokens_to_file(email)
-    
-    # Check for existing tokens
-    token_file = Path(f"tokens/{email}_tokens.json")
-    credentials = None
-    
-    if token_file.exists():
-        credentials = Credentials.from_authorized_user_file(str(token_file), SCOPES)
+    # Get credentials from token manager
+    credentials = token_manager.get_credentials(email)
     
     # Refresh tokens if expired
     if credentials and credentials.expired and credentials.refresh_token:
-        try:
-            credentials.refresh(Request())
-            _save_credentials(credentials, email)
-        except Exception as e:
-            print(f"Token refresh failed: {e}")
+        success = await token_manager.refresh_and_persist(email, credentials)
+        if not success:
+            print(f"Token refresh failed for {email}")
             credentials = None
     
     # If no valid credentials, start OAuth flow
@@ -186,7 +135,24 @@ async def _oauth_flow(email):
     
     # Exchange code for tokens
     credentials = await _exchange_code_for_tokens(auth_code, client_config)
-    _save_credentials(credentials, email)
+    
+    # Save to token manager instead of file
+    token_data = {
+        'token': credentials.token,
+        'refresh_token': credentials.refresh_token,
+        'token_uri': credentials.token_uri,
+        'client_id': credentials.client_id,
+        'client_secret': credentials.client_secret,
+        'scopes': credentials.scopes,
+        'email': email,
+        'expiry': credentials.expiry.isoformat() if credentials.expiry else None,
+        'created_at': datetime.now(timezone.utc).isoformat()
+    }
+    
+    # Store in memory and sync to Railway
+    from .railway_client import railway_client
+    token_json = json.dumps(token_data, separators=(',', ':'))
+    await railway_client.update_variable('GOOGLE_TOKENS_JSON', token_json)
     
     print(f"Authorization successful! Tokens saved for {email}")
     return credentials
@@ -225,24 +191,3 @@ async def _exchange_code_for_tokens(auth_code, client_config):
     
     return credentials
 
-def _save_credentials(credentials, email):
-    """Save credentials to file."""
-    token_file = Path(f"tokens/{email}_tokens.json")
-    token_file.parent.mkdir(exist_ok=True)
-    
-    cred_data = {
-        'token': credentials.token,
-        'refresh_token': credentials.refresh_token,
-        'token_uri': credentials.token_uri,
-        'client_id': credentials.client_id,
-        'client_secret': credentials.client_secret,
-        'scopes': credentials.scopes,
-        'email': email,
-        'created_at': datetime.now(timezone.utc).isoformat()
-    }
-    
-    with open(token_file, 'w') as f:
-        json.dump(cred_data, f, indent=2)
-    
-    # Set secure permissions
-    token_file.chmod(0o600)
