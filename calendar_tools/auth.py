@@ -3,6 +3,7 @@ import json
 import asyncio
 import webbrowser
 from datetime import datetime, timezone
+import dateutil.parser
 from urllib.parse import urlencode, parse_qs, urlparse
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
@@ -17,6 +18,48 @@ load_dotenv()
 
 SCOPES = ['https://www.googleapis.com/auth/calendar']
 REDIRECT_URI = 'http://localhost:8080/callback'
+
+def _sync_env_tokens_to_file(email):
+    """Load tokens from GOOGLE_TOKENS_JSON env var and sync to file if needed."""
+    tokens_json = os.getenv('GOOGLE_TOKENS_JSON')
+    if not tokens_json:
+        return False
+    
+    try:
+        env_tokens = json.loads(tokens_json)
+        token_file = Path(f"tokens/{email}_tokens.json")
+        
+        # Check if we need to sync (file doesn't exist or env is newer)
+        should_sync = True
+        if token_file.exists():
+            with open(token_file, 'r') as f:
+                file_tokens = json.load(f)
+            
+            # Compare timestamps
+            env_created_at = dateutil.parser.parse(env_tokens.get('created_at', '1970-01-01T00:00:00+00:00'))
+            file_created_at = dateutil.parser.parse(file_tokens.get('created_at', '1970-01-01T00:00:00+00:00'))
+            
+            if file_created_at >= env_created_at:
+                should_sync = False
+                print("Token file is newer than environment variable, skipping sync")
+        
+        if should_sync:
+            # Ensure tokens directory exists
+            token_file.parent.mkdir(exist_ok=True)
+            
+            # Write env tokens to file
+            with open(token_file, 'w') as f:
+                json.dump(env_tokens, f, indent=2)
+            
+            # Set secure permissions
+            token_file.chmod(0o600)
+            print(f"Synced tokens from environment variable to {token_file}")
+        
+        return True
+        
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        print(f"Error parsing GOOGLE_TOKENS_JSON: {e}")
+        return False
 
 class CallbackHandler(BaseHTTPRequestHandler):
     def do_GET(self):
@@ -48,6 +91,9 @@ async def create_service(email=None):
         email = os.getenv('GOOGLE_USER_EMAIL')
         if not email:
             raise ValueError("Email must be provided either as parameter or in GOOGLE_USER_EMAIL env variable")
+    
+    # Sync tokens from environment variable to file if needed
+    _sync_env_tokens_to_file(email)
     
     # Check for existing tokens
     token_file = Path(f"tokens/{email}_tokens.json")
