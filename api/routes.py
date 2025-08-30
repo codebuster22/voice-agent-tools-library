@@ -9,10 +9,13 @@ from datetime import datetime
 
 # Import tool functions
 from calendar_tools import create_service
-from calendar_tools.tools import (
-    list_calendars, get_availability, get_events, 
-    create_event, create_appointment, update_event, delete_event
-)
+from calendar_tools.tools.list_calendars import list_calendars
+from calendar_tools.tools.get_availability import get_availability
+from calendar_tools.tools.get_events import get_events
+from calendar_tools.tools.create_event import create_event
+from calendar_tools.tools.update_event import update_event
+from calendar_tools.tools.delete_event import delete_event
+from calendar_tools.tools.create_appointment import create_appointment
 from kb_tools import fetch_latest_kb, sync_knowledge_base
 from inventory import (
     check_inventory, get_expected_delivery_dates, get_prices,
@@ -48,6 +51,10 @@ async def create_tool_response(tool_name: str, tool_func, **kwargs) -> ToolRespo
     try:
         data = await tool_func(**kwargs)
         execution_time = (time.time() - start_time) * 1000
+        
+        # Wrap list results in a dict for ToolResponse compatibility
+        if isinstance(data, list):
+            data = {"items": data}
         
         return ToolResponse(
             success=True,
