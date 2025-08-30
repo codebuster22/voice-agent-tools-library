@@ -39,7 +39,7 @@ class RailwayClient:
         """Update environment variable via Railway API."""
         self._ensure_initialized()
         
-        url = "https://backboard.railway.app/v2/variables"
+        url = "https://backboard.railway.com/graphql/v2"
         
         payload = {
             "serviceId": self.service_id,

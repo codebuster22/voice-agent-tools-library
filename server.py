@@ -6,6 +6,8 @@ Runs FastAPI server exposing all 13 tools via HTTP endpoints.
 
 import uvicorn
 from api.app import create_app
+from dotenv import load_dotenv
+load_dotenv()
 
 def main():
     """Start the FastAPI server."""
