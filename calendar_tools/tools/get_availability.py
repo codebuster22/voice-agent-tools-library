@@ -1,12 +1,13 @@
 from datetime import datetime, timedelta, timezone
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Union
+from dateutil import parser
 
 
 async def get_availability(
     service,
     calendar_ids: Optional[List[str]] = None,
-    start_time: Optional[datetime] = None,
-    end_time: Optional[datetime] = None,
+    start_time: Optional[Union[datetime, str]] = None,
+    end_time: Optional[Union[datetime, str]] = None,
     working_hours_start: int = 9,
     working_hours_end: int = 17,
     working_days: Optional[List[int]] = None,
@@ -48,6 +49,18 @@ async def get_availability(
     
     if calendar_ids is None:
         calendar_ids = ['primary']
+    
+    # Convert string datetime to datetime objects if needed
+    if isinstance(start_time, str):
+        try:
+            start_time = parser.isoparse(start_time)
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Invalid start_time format: {start_time}. Please use ISO format (YYYY-MM-DDTHH:MM:SS)")
+    if isinstance(end_time, str):
+        try:
+            end_time = parser.isoparse(end_time)
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Invalid end_time format: {end_time}. Please use ISO format (YYYY-MM-DDTHH:MM:SS)")
     
     # Set default date range: today to next week
     if start_time is None:

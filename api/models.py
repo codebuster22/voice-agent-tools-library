@@ -55,28 +55,13 @@ class GetEventsRequest(BaseModel):
 
 
 class CreateEventRequest(BaseModel):
-    """Request model for create_event tool."""
+    """Request model for create_appointment tool (simplified for voice agent)."""
     calendar_id: str
     summary: str
     start_time: str
-    end_time: str
+    customer_email: str
     description: Optional[str] = None
     location: Optional[str] = None
-    timezone: Optional[str] = None
-    all_day: bool = False
-    attendees: Optional[List[str]] = None
-    optional_attendees: Optional[List[str]] = None
-    create_google_meet: bool = False
-    send_notifications: str = Field("all", pattern="^(all|external|none)$")
-    guests_can_invite_others: bool = True
-    guests_can_modify: bool = False
-    guests_can_see_others: bool = True
-    visibility: str = Field("default", pattern="^(default|public|private|confidential)$")
-    color_id: Optional[int] = Field(None, ge=1, le=24)
-    recurrence_rule: Optional[str] = None
-    email_reminder_minutes: Optional[int] = None
-    popup_reminder_minutes: Optional[int] = None
-    use_default_reminders: bool = True
 
 
 class UpdateEventRequest(BaseModel):

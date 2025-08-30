@@ -217,8 +217,8 @@ class VapiToolManager:
                             "max_results": {
                                 "type": "integer",
                                 "minimum": 1,
-                                "maximum": 50,
-                                "default": 10,
+                                "maximum": 1000,
+                                "default": 100,
                                 "description": "Maximum number of calendars to return"
                             },
                             "show_hidden": {
@@ -232,8 +232,9 @@ class VapiToolManager:
                                 "description": "Search patterns to filter calendars (regex supported)"
                             },
                             "query_string_to_include": {
-                                "type": "string",
-                                "description": "Single search pattern that calendars must match to be included"
+                                "type": "boolean",
+                                "default": True,
+                                "description": "If True, include calendars matching patterns; If False, exclude calendars matching patterns"
                             }
                         },
                         "required": []
@@ -255,15 +256,19 @@ class VapiToolManager:
                                 "items": {"type": "string"},
                                 "description": "List of calendar IDs to check availability for"
                             },
-                            "start_date": {
+                            "start_time": {
                                 "type": "string",
-                                "format": "date",
-                                "description": "Start date for availability check (YYYY-MM-DD format)"
+                                "format": "date-time",
+                                "description": "Start date/time for availability check"
                             },
-                            "end_date": {
+                            "end_time": {
+                                "type": "string", 
+                                "format": "date-time",
+                                "description": "End date/time for availability check"
+                            },
+                            "time_zone": {
                                 "type": "string",
-                                "format": "date", 
-                                "description": "End date for availability check (YYYY-MM-DD format)"
+                                "description": "Timezone for the availability check (e.g., 'America/New_York', 'UTC')"
                             },
                             "working_hours_start": {
                                 "type": "integer",
@@ -279,12 +284,6 @@ class VapiToolManager:
                                 "default": 17,
                                 "description": "End of working hours (24-hour format)"
                             },
-                            "working_days": {
-                                "type": "array",
-                                "items": {"type": "integer", "minimum": 0, "maximum": 6},
-                                "default": [0, 1, 2, 3, 4],
-                                "description": "Working days (0=Monday, 6=Sunday)"
-                            }
                         },
                         "required": []
                     }
@@ -309,25 +308,25 @@ class VapiToolManager:
                                 "type": "string",
                                 "description": "Specific event ID to retrieve (for single event lookup)"
                             },
-                            "start_date": {
+                            "time_min": {
                                 "type": "string",
-                                "format": "date",
-                                "description": "Start date for event search (YYYY-MM-DD format)"
+                                "format": "date-time",
+                                "description": "Start of time range for event search"
                             },
-                            "end_date": {
+                            "time_max": {
                                 "type": "string",
-                                "format": "date",
-                                "description": "End date for event search (YYYY-MM-DD format)"
+                                "format": "date-time", 
+                                "description": "End of time range for event search"
                             },
-                            "search_query": {
+                            "query": {
                                 "type": "string",
                                 "description": "Text search query to filter events by title, description, or content"
                             },
                             "max_results": {
                                 "type": "integer",
                                 "minimum": 1,
-                                "maximum": 250,
-                                "default": 50,
+                                "maximum": 2500,
+                                "default": 250,
                                 "description": "Maximum number of events to return"
                             },
                             "order_by": {
@@ -335,6 +334,15 @@ class VapiToolManager:
                                 "enum": ["startTime", "updated"],
                                 "default": "startTime",
                                 "description": "How to order the returned events"
+                            },
+                            "show_deleted": {
+                                "type": "boolean",
+                                "default": False,
+                                "description": "Whether to include deleted events in results"
+                            },
+                            "time_zone": {
+                                "type": "string",
+                                "description": "Timezone for the event search (e.g., 'America/New_York', 'UTC')"
                             }
                         },
                         "required": []
@@ -347,7 +355,7 @@ class VapiToolManager:
             CreateFunctionToolDto(
                 function=OpenAiFunction(
                     name="create_appointment",
-                    description="Create new appointments/events in Google Calendar with comprehensive options including attendees, reminders, and Google Meet integration. Perfect for scheduling customer appointments.",
+                    description="Create a 30-minute customer appointment in Google Calendar. Automatically sends notifications to the customer. Perfect for scheduling test drives, consultations, and service appointments.",
                     parameters={
                         "type": "object",
                         "properties": {
@@ -357,63 +365,28 @@ class VapiToolManager:
                             },
                             "summary": {
                                 "type": "string",
-                                "description": "Appointment title/summary (e.g., 'Vehicle Test Drive - John Smith')"
+                                "description": "Appointment title/summary (e.g., 'Test Drive - Toyota Camry - John Smith')"
                             },
                             "description": {
                                 "type": "string",
                                 "description": "Detailed appointment description with customer notes and requirements"
                             },
-                            "start_datetime": {
+                            "start_time": {
                                 "type": "string",
                                 "format": "date-time",
-                                "description": "Appointment start time in ISO format (e.g., '2024-01-15T10:00:00')"
+                                "description": "Appointment start time"
                             },
-                            "end_datetime": {
+                            "customer_email": {
                                 "type": "string",
-                                "format": "date-time",
-                                "description": "Appointment end time in ISO format (e.g., '2024-01-15T11:00:00')"
-                            },
-                            "timezone": {
-                                "type": "string",
-                                "default": "America/New_York",
-                                "description": "Timezone for the appointment (e.g., 'America/New_York', 'America/Los_Angeles')"
-                            },
-                            "attendee_emails": {
-                                "type": "array",
-                                "items": {"type": "string", "format": "email"},
-                                "description": "List of required attendee email addresses"
-                            },
-                            "optional_attendee_emails": {
-                                "type": "array",
-                                "items": {"type": "string", "format": "email"},
-                                "description": "List of optional attendee email addresses"
+                                "format": "email",
+                                "description": "Customer's email address for notifications and calendar invite"
                             },
                             "location": {
                                 "type": "string",
-                                "description": "Physical location for the appointment (dealership address, specific lot location)"
-                            },
-                            "add_google_meet": {
-                                "type": "boolean",
-                                "default": False,
-                                "description": "Whether to add Google Meet video conferencing to the appointment"
-                            },
-                            "send_notifications": {
-                                "type": "boolean",
-                                "default": True,
-                                "description": "Whether to send email notifications to attendees about the appointment"
-                            },
-                            "email_reminder_minutes": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "description": "Minutes before appointment to send email reminder (e.g., 1440 for 24 hours)"
-                            },
-                            "popup_reminder_minutes": {
-                                "type": "integer",
-                                "minimum": 0,
-                                "description": "Minutes before appointment to show popup reminder (e.g., 30 for 30 minutes)"
+                                "description": "Physical location for the appointment (dealership address, specific area)"
                             }
                         },
-                        "required": ["calendar_id", "summary", "start_datetime", "end_datetime"]
+                        "required": ["calendar_id", "summary", "start_time", "customer_email"]
                     }
                 ),
                 server=Server(url=f"{self.server_base_url}/api/v1/calendar/create-event")
@@ -443,15 +416,15 @@ class VapiToolManager:
                                 "type": "string",
                                 "description": "New appointment description"
                             },
-                            "start_datetime": {
+                            "start_time": {
                                 "type": "string",
                                 "format": "date-time",
-                                "description": "New start time in ISO format"
+                                "description": "New start time for the appointment"
                             },
-                            "end_datetime": {
+                            "end_time": {
                                 "type": "string", 
                                 "format": "date-time",
-                                "description": "New end time in ISO format"
+                                "description": "New end time for the appointment"
                             },
                             "timezone": {
                                 "type": "string",
@@ -461,7 +434,7 @@ class VapiToolManager:
                                 "type": "string",
                                 "description": "New location for the appointment"
                             },
-                            "attendee_emails": {
+                            "attendees": {
                                 "type": "array",
                                 "items": {"type": "string", "format": "email"},
                                 "description": "New list of required attendee email addresses (replaces existing)"
@@ -472,14 +445,15 @@ class VapiToolManager:
                                 "default": "replace",
                                 "description": "How to handle attendee updates: replace all, add new, or remove specified"
                             },
-                            "add_google_meet": {
+                            "create_google_meet": {
                                 "type": "boolean",
                                 "description": "Add or remove Google Meet from the appointment"
                             },
                             "send_notifications": {
-                                "type": "boolean",
-                                "default": True,
-                                "description": "Whether to send notifications about the update"
+                                "type": "string",
+                                "enum": ["all", "external_only", "none"],
+                                "default": "all",
+                                "description": "Who to send notifications to: all attendees, external only, or none"
                             }
                         },
                         "required": ["calendar_id", "event_id"]

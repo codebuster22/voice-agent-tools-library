@@ -11,7 +11,7 @@ from datetime import datetime
 from calendar_tools import create_service
 from calendar_tools.tools import (
     list_calendars, get_availability, get_events, 
-    create_event, update_event, delete_event
+    create_event, create_appointment, update_event, delete_event
 )
 from kb_tools import fetch_latest_kb, sync_knowledge_base
 from inventory import (
@@ -165,34 +165,19 @@ async def get_events_endpoint(request_data: GetEventsRequest, request: Request):
 
 @router.post("/calendar/create-event", response_model=ToolResponse)
 async def create_event_endpoint(request_data: CreateEventRequest, request: Request):
-    """Create calendar event."""
+    """Create simple 30-minute customer appointment."""
     service = await get_calendar_service(None, request)
     
     return await create_tool_response(
-        "create_event",
-        create_event,
+        "create_appointment",
+        create_appointment,
         service=service,
         calendar_id=request_data.calendar_id,
         summary=request_data.summary,
         start_time=request_data.start_time,
-        end_time=request_data.end_time,
+        customer_email=request_data.customer_email,
         description=request_data.description,
-        location=request_data.location,
-        timezone=request_data.timezone,
-        all_day=request_data.all_day,
-        attendees=request_data.attendees,
-        optional_attendees=request_data.optional_attendees,
-        create_google_meet=request_data.create_google_meet,
-        send_notifications=request_data.send_notifications,
-        guests_can_invite_others=request_data.guests_can_invite_others,
-        guests_can_modify=request_data.guests_can_modify,
-        guests_can_see_others=request_data.guests_can_see_others,
-        visibility=request_data.visibility,
-        color_id=request_data.color_id,
-        recurrence_rule=request_data.recurrence_rule,
-        email_reminder_minutes=request_data.email_reminder_minutes,
-        popup_reminder_minutes=request_data.popup_reminder_minutes,
-        use_default_reminders=request_data.use_default_reminders
+        location=request_data.location
     )
 
 
