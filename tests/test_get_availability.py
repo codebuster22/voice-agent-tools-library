@@ -12,14 +12,11 @@ def _parse_datetime(iso_string):
 
 
 @pytest.mark.asyncio
-async def test_get_availability_default_parameters():
+@pytest.mark.integration
+async def test_get_availability_default_parameters(test_email):
     """Test get_availability with default parameters (today to next week, working hours)."""
-    # This test will use real Google Calendar API
-    # Requires EMAIL_FOR_TESTING environment variable
-    import os
-    email = os.getenv('EMAIL_FOR_TESTING')
-    if not email:
-        pytest.skip("EMAIL_FOR_TESTING not set")
+    # This test will use real Google Calendar API with service account
+    email = test_email
     
     service = await create_service(email)
     availability = await get_availability(service)
@@ -38,12 +35,10 @@ async def test_get_availability_default_parameters():
 
 
 @pytest.mark.asyncio
-async def test_get_availability_custom_date_range():
+@pytest.mark.integration
+async def test_get_availability_custom_date_range(test_email):
     """Test get_availability with custom start and end times."""
-    import os
-    email = os.getenv('EMAIL_FOR_TESTING')
-    if not email:
-        pytest.skip("EMAIL_FOR_TESTING not set")
+    email = test_email
     
     service = await create_service(email)
     start_time = datetime(2024, 8, 26, 0, 0, 0, tzinfo=timezone.utc)

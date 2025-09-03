@@ -132,35 +132,29 @@ async def create_tool_response(tool_name: str, tool_func, **kwargs) -> ToolRespo
 
 
 async def get_calendar_service(user_email: str = None, request: Request = None):
-    """Get authenticated calendar service for user."""
-    logger.debug("Getting calendar service", requested_email=user_email)
+    """Get the shared calendar service from app state."""
+    logger.debug("Getting shared calendar service")
     
     try:
-        # Try to use service from app state first (faster, already authenticated)
-        if (request and hasattr(request.app.state, 'calendar_service') and 
-            hasattr(request.app.state, 'calendar_email')):
-            
-            # Use stored service if no specific email requested or emails match
-            if not user_email or user_email == request.app.state.calendar_email:
-                logger.debug("Using cached calendar service", email=request.app.state.calendar_email)
-                return request.app.state.calendar_service
+        # Get the pre-initialized service from app state
+        calendar_service = request.app.state.calendar_service
+        calendar_email = request.app.state.calendar_email
         
-        # Fallback to creating new service for specific user
-        if not user_email:
-            import os
-            user_email = os.getenv('GOOGLE_USER_EMAIL')
-            if not user_email:
-                logger.error("No user email available for calendar authentication")
-                raise ValueError("No user email available for calendar authentication")
+        if not calendar_service:
+            logger.error("Calendar service not initialized - check server startup logs")
+            raise HTTPException(status_code=503, detail="Calendar service not available - server initialization failed")
         
-        logger.info("Creating new calendar service", email=user_email)
-        service = await create_service(user_email)
-        logger.debug("Calendar service created successfully", email=user_email)
-        return service
+        # Log which email this service is configured for (informational)
+        if user_email and user_email != calendar_email:
+            logger.warning("Requested email differs from configured email", 
+                         requested=user_email, configured=calendar_email)
         
-    except Exception as e:
-        logger.error("Calendar authentication failed", error=str(e), error_type=type(e).__name__, user_email=user_email)
-        raise HTTPException(status_code=401, detail=f"Calendar authentication failed: {str(e)}")
+        logger.debug("Using shared calendar service", email=calendar_email)
+        return calendar_service
+        
+    except AttributeError:
+        logger.error("App state not properly initialized - calendar service missing")
+        raise HTTPException(status_code=503, detail="Calendar service not available - app state not initialized")
 
 
 # =============================================================================

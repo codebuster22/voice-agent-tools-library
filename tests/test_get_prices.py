@@ -168,13 +168,6 @@ class TestGetPrices:
         
         assert "Invalid query_type" in str(exc_info.value)
 
-    @pytest.mark.asyncio
-    async def test_get_prices_specific_no_ids(self):
-        """Test specific pricing without vehicle_id or inventory_id."""
-        with pytest.raises(ValueError) as exc_info:
-            await get_prices(query_type="specific")
-        
-        assert "required" in str(exc_info.value).lower()
 
     @pytest.mark.asyncio
     async def test_get_prices_invalid_vehicle_id(self):

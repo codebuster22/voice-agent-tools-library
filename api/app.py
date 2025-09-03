@@ -20,27 +20,35 @@ async def lifespan(app: FastAPI):
     configure_logging()
     logger.info("Starting automotive voice agent server")
     
-    # Startup: Initialize Google Calendar authentication
+    # Startup: Initialize Google Calendar service (single instance for all requests)
     
-    # Initialize Google Calendar auth on startup
+    # Create calendar service for the configured email
     try:
-        logger.info("Initializing Google Calendar authentication")
+        logger.info("Initializing calendar service")
         from calendar_tools.auth import create_service
         
+        # Get the email that will be used for all calendar operations
         email = os.getenv('GOOGLE_USER_EMAIL')
-        if email:
-            service = await create_service(email)
-            logger.info("Google Calendar authenticated", email=email)
-            
-            # Store service in app state for reuse
-            app.state.calendar_service = service
-            app.state.calendar_email = email
-        else:
-            logger.warning("GOOGLE_USER_EMAIL not set - calendar tools will require manual auth")
-            
+        if not email:
+            logger.error("GOOGLE_USER_EMAIL environment variable is required")
+            raise ValueError("GOOGLE_USER_EMAIL environment variable must be set")
+        
+        # Create the calendar service (authenticates with service account)
+        logger.info("Creating calendar service for production use", email=email)
+        calendar_service = await create_service(email)
+        
+        # Store service in app state for reuse across all requests
+        app.state.calendar_service = calendar_service
+        app.state.calendar_email = email
+        
+        logger.info("Calendar service initialized successfully", email=email)
+        
     except Exception as e:
-        logger.error("Google Calendar auth failed", error=str(e), error_type=type(e).__name__)
-        logger.warning("Calendar tools may require manual authentication")
+        logger.error("Calendar service initialization failed", error=str(e), error_type=type(e).__name__)
+        # Don't store anything in app.state on failure
+        app.state.calendar_service = None
+        app.state.calendar_email = None
+        logger.error("Server will not be able to handle calendar requests")
     
     logger.info("Server startup complete")
     yield

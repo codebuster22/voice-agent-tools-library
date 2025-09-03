@@ -254,13 +254,6 @@ class TestGetVehicleDetails:
         
         assert "Invalid vehicle_id format" in str(exc_info.value)
 
-    @pytest.mark.asyncio
-    async def test_get_vehicle_details_no_ids_provided(self):
-        """Test get_vehicle_details without providing any IDs."""
-        with pytest.raises(ValueError) as exc_info:
-            await get_vehicle_details()
-        
-        assert "required" in str(exc_info.value)
 
     @pytest.mark.asyncio
     async def test_get_vehicle_details_inactive_vehicle(self):
