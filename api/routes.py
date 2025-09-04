@@ -64,7 +64,7 @@ async def create_tool_response(tool_name: str, tool_func, **kwargs) -> ToolRespo
             else:
                 debug_kwargs[key] = value
         
-        logger.debug(f"Tool parameters for {tool_name}", tool_name=tool_name, params=debug_kwargs)
+        logger.info(f"Tool parameters for {tool_name}", tool_name=tool_name, params=debug_kwargs)
     
     try:
         data = await tool_func(**kwargs)
@@ -81,14 +81,14 @@ async def create_tool_response(tool_name: str, tool_func, **kwargs) -> ToolRespo
         
         # Debug level: log result size/preview
         if isinstance(data, list):
-            logger.debug(
+            logger.info(
                 f"Tool result details for {tool_name}",
                 tool_name=tool_name,
                 result_count=len(data),
                 result_preview=data[:2] if len(data) > 0 else []
             )
         elif isinstance(data, dict):
-            logger.debug(
+            logger.info(
                 f"Tool result details for {tool_name}",
                 tool_name=tool_name,
                 result_keys=list(data.keys())[:10] if data else [],
@@ -133,7 +133,7 @@ async def create_tool_response(tool_name: str, tool_func, **kwargs) -> ToolRespo
 
 async def get_calendar_service(user_email: str = None, request: Request = None):
     """Get the shared calendar service from app state."""
-    logger.debug("Getting shared calendar service")
+    logger.info("Getting shared calendar service")
     
     try:
         # Get the pre-initialized service from app state
@@ -149,7 +149,7 @@ async def get_calendar_service(user_email: str = None, request: Request = None):
             logger.warning("Requested email differs from configured email", 
                          requested=user_email, configured=calendar_email)
         
-        logger.debug("Using shared calendar service", email=calendar_email)
+        logger.info("Using shared calendar service", email=calendar_email)
         return calendar_service
         
     except AttributeError:

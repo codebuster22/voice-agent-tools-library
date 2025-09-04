@@ -53,7 +53,7 @@ class LoggingMiddleware(BaseHTTPMiddleware):
         
         # Debug level: include request body
         if request_body is not None:
-            logger.debug(
+            logger.info(
                 "Request body received",
                 body=request_body,
                 body_size=len(str(request_body)) if request_body else 0

@@ -37,7 +37,7 @@ async def create_service(email: str = None) -> build:
         if not email:
             raise ValueError("Email must be provided either as parameter or in GOOGLE_USER_EMAIL env variable")
     
-    logger.debug("Creating calendar service with service account", email=email)
+    logger.info("Creating calendar service with service account", email=email)
     
     # Get service account credentials from environment
     sa_json = os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON')
@@ -57,7 +57,7 @@ async def create_service(email: str = None) -> build:
         # Build and return the calendar service
         service = build("calendar", "v3", credentials=credentials, cache_discovery=False)
         
-        logger.debug("Calendar service created successfully", email=email)
+        logger.info("Calendar service created successfully", email=email)
         return service
         
     except json.JSONDecodeError as e:
