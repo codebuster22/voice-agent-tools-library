@@ -106,7 +106,7 @@ async def process_tool_call(request: Request, tool_call: VapiToolCall) -> ToolCa
         try:
             # Parse the arguments JSON string
             arguments = json.loads(tool_call.function.arguments)
-            logger.debug(f"Parsed arguments for {tool_name}", 
+            logger.info(f"Parsed arguments for {tool_name}", 
                         extra={"tool_name": tool_name, "argument_keys": list(arguments.keys())})
         except json.JSONDecodeError as e:
             error_msg = f"Invalid JSON in arguments: {str(e)}"
@@ -123,7 +123,7 @@ async def process_tool_call(request: Request, tool_call: VapiToolCall) -> ToolCa
             try:
                 validated_request = request_model(**arguments)
                 tool_kwargs = validated_request.model_dump(exclude_unset=True)
-                logger.debug(f"Arguments validated for {tool_name}")
+                logger.info(f"Arguments validated for {tool_name}")
             except Exception as e:
                 error_msg = f"Argument validation failed: {str(e)}"
                 logger.error(error_msg, extra={"tool_name": tool_name, "tool_call_id": tool_call_id})
@@ -147,10 +147,10 @@ async def process_tool_call(request: Request, tool_call: VapiToolCall) -> ToolCa
                     error=error_msg
                 )
             tool_kwargs["service"] = request.app.state.calendar_service
-            logger.debug(f"Calendar service injected for {tool_name}")
+            logger.info(f"Calendar service injected for {tool_name}")
         
         # Execute the tool function
-        logger.debug(f"Executing tool function: {tool_name}")
+        logger.info(f"Executing tool function: {tool_name}")
         if asyncio.iscoroutinefunction(tool_func):
             result = await tool_func(**tool_kwargs)
         else:
@@ -231,7 +231,7 @@ async def vapi_webhook_handler(request: Request, webhook_request: VapiWebhookReq
             tasks.append(task)
         
         # Execute all tool calls concurrently
-        logger.debug("Starting concurrent tool execution")
+        logger.info("Starting concurrent tool execution")
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         # Process results and handle any exceptions
