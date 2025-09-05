@@ -5,15 +5,13 @@ Single unified webhook endpoint handling all Vapi tool calls.
 
 import asyncio
 import json
-from typing import Dict, Any, Tuple, Optional, Callable
+from typing import Dict, Any, Tuple, Optional, Callable, List
 from fastapi import APIRouter, Request, HTTPException
 from pydantic import BaseModel
 
 # Vapi SDK imports for proper request/response handling
-from vapi.types.server_message_tool_calls import ServerMessageToolCalls
 from vapi.types.server_message_response_tool_calls import ServerMessageResponseToolCalls
 from vapi.types.tool_call_result import ToolCallResult
-from vapi.types.tool_call import ToolCall
 
 # Import existing tool functions (Phase 1: only get_availability)
 from calendar_tools.tools.get_availability import get_availability
@@ -29,12 +27,30 @@ webhook_router = APIRouter(prefix="/webhook")
 
 
 # =============================================================================
-# Vapi Request Wrapper Model
+# Vapi Request Models (matching actual Vapi field names)
 # =============================================================================
 
+class VapiToolCallFunction(BaseModel):
+    """Vapi tool call function structure."""
+    name: str
+    arguments: str  # JSON string
+
+class VapiToolCall(BaseModel):
+    """Vapi tool call structure."""
+    id: str
+    type: str
+    function: VapiToolCallFunction
+
+class VapiMessage(BaseModel):
+    """Vapi message structure with actual field names."""
+    timestamp: Optional[float] = None
+    type: Optional[str] = None
+    toolCallList: Optional[List[VapiToolCall]] = None  # camelCase as sent by Vapi
+    # We can ignore other fields for now
+
 class VapiWebhookRequest(BaseModel):
-    """Wrapper for Vapi webhook requests using SDK types."""
-    message: ServerMessageToolCalls
+    """Wrapper for Vapi webhook requests matching actual format."""
+    message: VapiMessage
 
 
 # =============================================================================
@@ -55,13 +71,13 @@ TOOL_REGISTRY: Dict[str, Tuple[Callable, Optional[type], Dict[str, Any]]] = {
 # Tool Processing Functions
 # =============================================================================
 
-async def process_tool_call(request: Request, tool_call: ToolCall) -> ToolCallResult:
+async def process_tool_call(request: Request, tool_call: VapiToolCall) -> ToolCallResult:
     """
     Process a single tool call and return the result.
     
     Args:
         request: FastAPI Request object (for accessing app.state)
-        tool_call: ToolCall object from Vapi SDK
+        tool_call: VapiToolCall object from our custom model
         
     Returns:
         ToolCallResult: Result for this specific tool call
@@ -192,26 +208,25 @@ async def vapi_webhook_handler(request: Request, webhook_request: VapiWebhookReq
                    extra={
                        "complete_request": webhook_request.model_dump(),
                        "request_data": message.model_dump(),
-                       "tool_count": len(message.tool_call_list) if message.tool_call_list else 0,
+                       "tool_count": len(message.toolCallList) if message.toolCallList else 0,
                        "timestamp": message.timestamp,
-                       "call_id": message.call.id if message.call else None,
-                       "assistant": message.assistant.name if message.assistant else None
+                       "message_type": message.type
                    })
         
-        # Check if tool_call_list exists and is not None
-        if not message.tool_call_list:
+        # Check if toolCallList exists and is not None
+        if not message.toolCallList:
             error_msg = "No tool calls found in request"
             logger.error(error_msg)
             return ServerMessageResponseToolCalls(error=error_msg)
         
         # Log tool details
-        tool_names = [tool_call.function.name for tool_call in message.tool_call_list]
-        logger.info(f"Processing {len(message.tool_call_list)} tool calls", 
+        tool_names = [tool_call.function.name for tool_call in message.toolCallList]
+        logger.info(f"Processing {len(message.toolCallList)} tool calls", 
                    extra={"tool_names": tool_names})
         
         # Create tasks for concurrent execution
         tasks = []
-        for tool_call in message.tool_call_list:
+        for tool_call in message.toolCallList:
             task = process_tool_call(request, tool_call)
             tasks.append(task)
         
@@ -224,7 +239,7 @@ async def vapi_webhook_handler(request: Request, webhook_request: VapiWebhookReq
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 # Handle exceptions from gather
-                tool_call = message.tool_call_list[i]
+                tool_call = message.toolCallList[i]
                 error_result = ToolCallResult(
                     tool_call_id=tool_call.id,
                     name=tool_call.function.name,
