@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .routes import router
+from .vapi_webhook import webhook_router
 from logging_config import configure_logging, logger
 from middleware import LoggingMiddleware
 
@@ -82,6 +83,9 @@ def create_app() -> FastAPI:
     
     # Include all API routes
     app.include_router(router)
+    
+    # Include Vapi webhook routes
+    app.include_router(webhook_router)
     
     return app
 

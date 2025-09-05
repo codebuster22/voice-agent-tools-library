@@ -288,7 +288,7 @@ class VapiToolManager:
                         "required": []
                     }
                 ),
-                server=Server(url=f"{self.server_base_url}/api/v1/calendar/get-availability")
+                server=Server(url=f"{self.server_base_url}/webhook/vapi")
             ),
             
             # 3. Get Calendar Events - EXISTING APPOINTMENT LOOKUP
